@@ -73,6 +73,98 @@ internal sealed class SizeHandler : IFtpCommandHandler
     }
 }
 
+internal sealed class CwdHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public CwdHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "CWD";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        var entry = await _storage.GetEntryAsync(path, ct);
+        if (entry is null || !entry.IsDirectory)
+        {
+            await writer.WriteLineAsync("550 Directory not found");
+            return;
+        }
+        context.Cwd = path;
+        await writer.WriteLineAsync("250 Requested file action okay, completed");
+    }
+}
+
+internal sealed class MkdHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public MkdHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "MKD";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        if (await _storage.ExistsAsync(path, ct))
+        {
+            await writer.WriteLineAsync("550 Directory already exists");
+            return;
+        }
+        await _storage.CreateDirectoryAsync(path, ct);
+        await writer.WriteLineAsync($"257 \"{path}\" created");
+    }
+}
+
+internal sealed class RmdHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public RmdHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "RMD";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        var entry = await _storage.GetEntryAsync(path, ct);
+        if (entry is null)
+        {
+            await writer.WriteLineAsync("550 Directory not found");
+            return;
+        }
+        if (!entry.IsDirectory)
+        {
+            await writer.WriteLineAsync("550 Not a directory");
+            return;
+        }
+        try
+        {
+            await _storage.DeleteAsync(path, recursive: false, ct);
+            await writer.WriteLineAsync("250 Requested file action okay, completed");
+        }
+        catch (IOException)
+        {
+            await writer.WriteLineAsync("550 Directory not empty");
+        }
+    }
+}
+
+internal sealed class DeleHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public DeleHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "DELE";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        var entry = await _storage.GetEntryAsync(path, ct);
+        if (entry is null)
+        {
+            await writer.WriteLineAsync("550 File not found");
+            return;
+        }
+        if (entry.IsDirectory)
+        {
+            await writer.WriteLineAsync("550 Not a plain file");
+            return;
+        }
+        await _storage.DeleteAsync(path, recursive: false, ct);
+        await writer.WriteLineAsync("250 Requested file action okay, completed");
+    }
+}
+
 internal sealed class QuitHandler : IFtpCommandHandler
 {
     public string Command => "QUIT";
