@@ -92,6 +92,10 @@ step "SIZE returns value and DELE works"
 SIZE=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "SIZE large.bin" 2>&1 | awk '/^< 213/ {print $3}')
 test -n "$SIZE" && [[ "$SIZE" -gt 0 ]]
 curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "DELE testdir/hello.txt" >/dev/null
-! curl -sS "${AUTH[@]}" "$FTP_URL/testdir/hello.txt" -o /dev/null 2>&1
+# Verify the deleted file is not retrievable, without noisy error logs
+if curl -sSf "${AUTH[@]}" "$FTP_URL/testdir/hello.txt" -o /dev/null 2>/dev/null; then
+  echo "[error] Expected missing file, but retrieval succeeded" >&2
+  exit 1
+fi
 
 echo "[ok] All cURL integration tests passed"
