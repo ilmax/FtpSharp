@@ -101,6 +101,105 @@ public class FtpSessionTests
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
 
+    [Fact]
+    public async Task Mkdir_Delete_File_And_Dir_Works()
+    {
+        var storage = new InMemoryStorageProvider();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var ep = (IPEndPoint)listener.LocalEndpoint;
+
+        var clientTask = Task.Run(async () =>
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(ep.Address, ep.Port);
+            using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+            using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+
+            _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("MKD /m"); var mk = await reader.ReadLineAsync(); Assert.StartsWith("257", mk);
+            await writer.WriteLineAsync("CWD /m"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            using var dataClient = new TcpClient(); await dataClient.ConnectAsync(IPAddress.Parse(dip), dport);
+            await writer.WriteLineAsync("STOR f.txt"); _ = await reader.ReadLineAsync();
+            await using (var ns = dataClient.GetStream())
+            {
+                var bytes = Encoding.ASCII.GetBytes("abc");
+                await ns.WriteAsync(bytes, 0, bytes.Length);
+            }
+            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            await writer.WriteLineAsync("DELE /m/f.txt"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("RMD /m"); var rm = await reader.ReadLineAsync(); Assert.StartsWith("250", rm);
+            await writer.WriteLineAsync("QUIT"); _ = await reader.ReadLineAsync();
+        });
+
+        using var serverClient = await listener.AcceptTcpClientAsync();
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
+    }
+
+    [Fact]
+    public async Task Retr_Stor_Roundtrip_Binary_Works()
+    {
+        var storage = new InMemoryStorageProvider();
+        await storage.WriteAsync("/file.bin", OneChunk("hello"), CancellationToken.None);
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var ep = (IPEndPoint)listener.LocalEndpoint;
+
+        var clientTask = Task.Run(async () =>
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(ep.Address, ep.Port);
+            using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+            using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+
+            _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("TYPE I"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASV"); var pasv1 = await reader.ReadLineAsync(); var (dip1, dp1) = ParsePasv(pasv1!);
+            using (var d1 = new TcpClient())
+            {
+                await d1.ConnectAsync(IPAddress.Parse(dip1), dp1);
+                await writer.WriteLineAsync("RETR /file.bin"); _ = await reader.ReadLineAsync();
+                using var ns = d1.GetStream();
+                using var ms = new MemoryStream();
+                await ns.CopyToAsync(ms);
+                var done1 = await reader.ReadLineAsync(); Assert.StartsWith("226", done1);
+                Assert.Equal("hello", Encoding.ASCII.GetString(ms.ToArray()));
+            }
+
+            await writer.WriteLineAsync("PASV"); var pasv2 = await reader.ReadLineAsync(); var (dip2, dp2) = ParsePasv(pasv2!);
+            using (var d2 = new TcpClient())
+            {
+                await d2.ConnectAsync(IPAddress.Parse(dip2), dp2);
+                await writer.WriteLineAsync("STOR /new.bin"); _ = await reader.ReadLineAsync();
+                var buf = Encoding.ASCII.GetBytes("world");
+                await d2.GetStream().WriteAsync(buf, 0, buf.Length);
+            }
+            var done2 = await reader.ReadLineAsync(); Assert.StartsWith("226", done2);
+            await writer.WriteLineAsync("QUIT"); _ = await reader.ReadLineAsync();
+        });
+
+        using var serverClient = await listener.AcceptTcpClientAsync();
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
+
+        var size = await storage.GetSizeAsync("/new.bin", CancellationToken.None);
+        Assert.Equal(5, size);
+    }
+
     private static (string, int) ParsePasv(string s)
     {
         var start = s.IndexOf('(');
