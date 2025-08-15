@@ -20,4 +20,5 @@ public interface IFtpCommandHandler
 public interface IFtpSessionContext
 {
     string Cwd { get; set; }
+    char TransferType { get; set; }
 }

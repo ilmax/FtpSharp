@@ -27,6 +27,7 @@ public sealed class FtpSession : IFtpSessionContext
     private string _cwd = "/";
     private TcpListener? _pasvListener;
     private char _type = 'I'; // I=binary, A=ascii
+    public char TransferType { get => _type; set => _type = value; }
     private System.Net.IPEndPoint? _activeEndpoint;
 
     public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options)
@@ -44,6 +45,9 @@ public sealed class FtpSession : IFtpSessionContext
         ["PWD"]  = new PwdHandler(),
         ["CDUP"] = new CdupHandler(),
         ["HELP"] = new HelpHandler(),
+    ["FEAT"] = new FeatHandler(),
+    ["STAT"] = new StatHandler(),
+    ["TYPE"] = new TypeHandler(),
     };
 
     public string Cwd { get => _cwd; set => _cwd = value; }
