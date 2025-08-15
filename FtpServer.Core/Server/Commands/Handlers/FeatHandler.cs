@@ -8,6 +8,7 @@ namespace FtpServer.Core.Server.Commands;
 internal sealed class FeatHandler : IFtpCommandHandler
 {
     public string Command => "FEAT";
+
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
         await writer.WriteLineAsync("211-Features");
@@ -22,6 +23,7 @@ internal sealed class FeatHandler : IFtpCommandHandler
         await writer.WriteLineAsync(" TYPE A;I");
         await writer.WriteLineAsync(" MODE S");
         await writer.WriteLineAsync(" STRU F");
+        // Not a standard FEAT; only core features are listed. Timeouts are options, not FEAT entries.
         await writer.WriteLineAsync("211 End");
     }
 }

@@ -47,4 +47,8 @@ public sealed class FtpServerOptions
     /// <summary>Timeout in milliseconds for a data transfer operation (read/write). Default: 30000.</summary>
     [Range(100, 3_600_000)]
     public int DataTransferTimeoutMs { get; init; } = 30_000;
+
+    /// <summary>Timeout in milliseconds for reading control commands (idle). 0 disables timeout. Default: 0.</summary>
+    [Range(0, 3_600_000)]
+    public int ControlReadTimeoutMs { get; init; } = 0;
 }

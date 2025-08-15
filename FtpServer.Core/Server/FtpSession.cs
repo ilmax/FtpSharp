@@ -90,7 +90,24 @@ public sealed class FtpSession : IFtpSessionContext
         {
             while (!ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync();
+                var token = ct;
+                if (_options.Value.ControlReadTimeoutMs > 0)
+                {
+                    using var readCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    readCts.CancelAfter(_options.Value.ControlReadTimeoutMs);
+                    token = readCts.Token;
+                }
+                string? line;
+                try
+                {
+                    // StreamReader doesn't accept a token; use WaitAsync to apply timeout
+                    line = await reader.ReadLineAsync().WaitAsync(token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // idle timeout or cancellation; close session
+                    break;
+                }
                 if (line is null) break;
                 var parsed = FtpCommandParser.Parse(line);
                 if (_handlers.TryGetValue(parsed.Command, out var handler))
