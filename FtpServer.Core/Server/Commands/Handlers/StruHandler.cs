@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Protocol;
 
 namespace FtpServer.Core.Server.Commands;
@@ -12,7 +9,7 @@ internal sealed class StruHandler : IFtpCommandHandler
     public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
         var arg = (parsed.Argument ?? string.Empty).Trim();
-        if (string.Equals(arg, "F", System.StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(arg, "F", StringComparison.OrdinalIgnoreCase))
             return writer.WriteLineAsync("200 Structure set to F");
         return writer.WriteLineAsync("504 Command not implemented for that parameter");
     }

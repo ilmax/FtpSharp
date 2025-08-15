@@ -16,7 +16,7 @@ public class ConcurrencyDataTests
 
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var clientTasks = Enumerable.Range(0, 8).Select(async i =>
         {
@@ -47,7 +47,7 @@ public class ConcurrencyDataTests
         for (int i = 0; i < clientTasks.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -72,7 +72,7 @@ public class ConcurrencyDataTests
 
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var path = "/concurrent.bin";
 
@@ -106,7 +106,7 @@ public class ConcurrencyDataTests
         for (int i = 0; i < 2; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -133,7 +133,7 @@ public class ConcurrencyDataTests
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
         await storage.WriteAsync("/f.txt", OneChunk("HELLOWORLD"), CancellationToken.None);
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var clientTask = Task.Run(async () =>
         {
@@ -154,7 +154,7 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
     }
@@ -165,7 +165,7 @@ public class ConcurrencyDataTests
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider(); await storage.WriteAsync("/a.txt", OneChunk("HELLO"), CancellationToken.None);
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var clientTask = Task.Run(async () =>
         {
@@ -184,7 +184,7 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
@@ -198,7 +198,7 @@ public class ConcurrencyDataTests
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider(); await storage.WriteAsync("/s.txt", OneChunk("HELLOWORLD"), CancellationToken.None);
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var clientTask = Task.Run(async () =>
         {
@@ -218,7 +218,7 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
@@ -239,7 +239,7 @@ public class ConcurrencyDataTests
         {
             await storage.WriteAsync($"/r/{i}.txt", OneChunk($"ret-{i}"), CancellationToken.None);
         }
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var clientTasks = Enumerable.Range(0, 6).Select(async i =>
         {
@@ -272,7 +272,7 @@ public class ConcurrencyDataTests
         for (int i = 0; i < clientTasks.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -293,7 +293,7 @@ public class ConcurrencyDataTests
         var storage = new InMemoryStorageProvider();
         for (int i = 0; i < 4; i++)
             await storage.WriteAsync($"/mix/r{i}.txt", OneChunk($"mix-{i}"), CancellationToken.None);
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var tasks = new List<Task>();
         // 4 RETR clients
@@ -344,7 +344,7 @@ public class ConcurrencyDataTests
         for (int i = 0; i < 8; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -370,7 +370,7 @@ public class ConcurrencyDataTests
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
         await storage.WriteAsync("/file.txt", OneChunk("x"), CancellationToken.None);
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions
         {
             PassivePortRangeStart = 50100,
             PassivePortRangeEnd = 50110
@@ -401,7 +401,7 @@ public class ConcurrencyDataTests
         for (int i = 0; i < clients.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -420,7 +420,7 @@ public class ConcurrencyDataTests
         // ~10KB file
         var payload = new string('x', 10_240);
         await storage.WriteAsync("/big.bin", OneChunk(payload), CancellationToken.None);
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions
         {
             DataRateLimitBytesPerSec = 2_048 // 2KB/s
         });
@@ -445,7 +445,7 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 

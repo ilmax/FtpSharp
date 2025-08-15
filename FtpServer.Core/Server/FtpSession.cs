@@ -195,6 +195,14 @@ public sealed class FtpSession : IFtpSessionContext
             var client = await _pasvListener.AcceptTcpClientAsync(tok);
             _pasvListener.Stop();
             _pasvListener = null;
+            // Release the passive port lease immediately after accepting the data connection.
+            // The accepted TcpClient uses its own socket and does not require the listener to remain bound.
+            // Keeping the lease would unnecessarily hold the port and could exhaust the passive range under load.
+            if (_pasvLease is not null)
+            {
+                try { await _pasvLease.DisposeAsync(); } catch { }
+                _pasvLease = null;
+            }
             Metrics.SessionActiveTransfers.Add(1, new KeyValuePair<string, object?>("session_id", _sessionId));
             return new SessionTaggedStream(client.GetStream(), () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }

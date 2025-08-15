@@ -5,11 +5,6 @@ using FtpServer.Core.Configuration;
 using FtpServer.Core.FileSystem;
 using FtpServer.Core.InMemory;
 using FtpServer.Core.Server;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 

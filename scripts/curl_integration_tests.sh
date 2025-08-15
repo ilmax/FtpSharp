@@ -10,6 +10,7 @@ PORT=${PORT:-2121}
 PASV_START=${PASV_START:-49152}
 PASV_END=${PASV_END:-49162}
 SERVER_LOG="$TMPDIR/server.log"
+FAIL=0
 
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -131,62 +132,95 @@ curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "RMD sub" >/dev/
 
 step "Parallel uploads"
 for i in 1 2 3; do dd if=/dev/urandom of="$TMPDIR/p$i.bin" bs=1024 count=32 status=none; done
-curl -sS "${AUTH[@]}" -T "$TMPDIR/p1.bin" "$FTP_URL/testdir/p1.bin" >/dev/null &
-curl -sS "${AUTH[@]}" -T "$TMPDIR/p2.bin" "$FTP_URL/testdir/p2.bin" >/dev/null &
-curl -sS "${AUTH[@]}" -T "$TMPDIR/p3.bin" "$FTP_URL/testdir/p3.bin" >/dev/null &
-wait
+# Use curl's built-in parallel transfers to avoid backgrounding multiple processes in the same terminal.
+# Add conservative timeouts so failures don't hang indefinitely. If --parallel is unavailable, fall back to sequential uploads.
+if curl --help all 2>&1 | grep -q -- "--parallel"; then
+  curl -sS --parallel --parallel-immediate \
+    --connect-timeout 5 --max-time 30 \
+    "${AUTH[@]}" \
+    -T "$TMPDIR/p1.bin" "$FTP_URL/testdir/p1.bin" \
+    -T "$TMPDIR/p2.bin" "$FTP_URL/testdir/p2.bin" \
+    -T "$TMPDIR/p3.bin" "$FTP_URL/testdir/p3.bin" \
+    >/dev/null
+else
+  echo "[warn] curl --parallel not supported; uploading sequentially" >&2
+  curl -sS --connect-timeout 5 --max-time 30 "${AUTH[@]}" -T "$TMPDIR/p1.bin" "$FTP_URL/testdir/p1.bin" >/dev/null
+  curl -sS --connect-timeout 5 --max-time 30 "${AUTH[@]}" -T "$TMPDIR/p2.bin" "$FTP_URL/testdir/p2.bin" >/dev/null
+  curl -sS --connect-timeout 5 --max-time 30 "${AUTH[@]}" -T "$TMPDIR/p3.bin" "$FTP_URL/testdir/p3.bin" >/dev/null
+fi
 curl -sS "${AUTH[@]}" "$FTP_URL/testdir/" | grep -q "p1.bin"
 
-echo "[ok] cURL tests passed"
+echo "[ok] Core cURL segment passed"
 
 # Additional protocol checks
 step "FEAT advertises REST and APPE"
 FEAT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "FEAT" 2>&1 || true)
-echo "$FEAT" | grep -q "REST STREAM"
-echo "$FEAT" | grep -q "APPE"
+echo "$FEAT" | grep -q "REST STREAM" || { echo "[error] FEAT missing REST STREAM" >&2; FAIL=1; }
+echo "$FEAT" | grep -q "APPE" || { echo "[error] FEAT missing APPE" >&2; FAIL=1; }
 
 step "SYST returns a system type"
-curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "SYST" >/dev/null
+if ! curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "SYST" >/dev/null; then
+  echo "[error] SYST failed" >&2; FAIL=1;
+fi
 
 step "CDUP at root stays at /"
 PWD_OUT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
-echo "$PWD_OUT" | grep -q "/"
-curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CDUP" >/dev/null
+echo "$PWD_OUT" | grep -q "/" || { echo "[error] PWD did not return path" >&2; FAIL=1; }
+if ! curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CDUP" >/dev/null; then
+  echo "[error] CDUP failed" >&2; FAIL=1;
+fi
 PWD_OUT2=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
-echo "$PWD_OUT2" | grep -q "/"
+echo "$PWD_OUT2" | grep -q "/" || { echo "[error] PWD after CDUP did not return path" >&2; FAIL=1; }
 
 step "DELE non-existent returns 550"
 DELE_OUT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "DELE nofile.bin" 2>&1 || true)
-echo "$DELE_OUT" | grep -q "550"
+echo "$DELE_OUT" | grep -q "550" || { echo "[error] DELE non-existent did not return 550" >&2; FAIL=1; }
 
 step "SIZE on directory returns error"
 SIZE_DIR=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "SIZE ." 2>&1 || true)
-echo "$SIZE_DIR" | grep -q "550"
+echo "$SIZE_DIR" | grep -q "550" || { echo "[error] SIZE on directory did not return 550" >&2; FAIL=1; }
 
 step "Active mode RETR works"
-curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null
-test -s "$TMPDIR/act_dl.bin"
+if ! curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null; then
+  echo "[error] Active mode RETR failed" >&2; FAIL=1;
+fi
+test -s "$TMPDIR/act_dl.bin" || { echo "[error] Active mode download is empty" >&2; FAIL=1; }
 
 step "Disable EPSV forces PASV path"
-curl -sS --disable-epsv "${AUTH[@]}" "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/pasv_dl.bin" >/dev/null
-cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin"
+if ! curl -sS --disable-epsv "${AUTH[@]}" "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/pasv_dl.bin" >/dev/null; then
+  echo "[error] PASV retrieval with EPSV disabled failed" >&2; FAIL=1;
+fi
+cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin" || { echo "[error] Active vs PASV downloads differ" >&2; FAIL=1; }
 
 step "Resume STOR upload with -C -"
 dd if=/dev/urandom of="$TMPDIR/big2.bin" bs=1024 count=96 status=none
 head -c 20480 "$TMPDIR/big2.bin" > "$TMPDIR/big2.part"
-curl -sS "${AUTH[@]}" -T "$TMPDIR/big2.part" "$FTP_URL/testdir/big2.bin" >/dev/null
-curl -sS "${AUTH[@]}" -C - -T "$TMPDIR/big2.bin" "$FTP_URL/testdir/big2.bin" >/dev/null
-curl -sS "${AUTH[@]}" "$FTP_URL/testdir/big2.bin" -o "$TMPDIR/big2.dl" >/dev/null
-cmp "$TMPDIR/big2.bin" "$TMPDIR/big2.dl"
+if ! curl -sS "${AUTH[@]}" -T "$TMPDIR/big2.part" "$FTP_URL/testdir/big2.bin" >/dev/null; then
+  echo "[error] Initial partial STOR failed" >&2; FAIL=1;
+fi
+if ! curl -sS "${AUTH[@]}" -C - -T "$TMPDIR/big2.bin" "$FTP_URL/testdir/big2.bin" >/dev/null; then
+  echo "[error] Resume STOR with -C - failed" >&2; FAIL=1;
+fi
+if ! curl -sS "${AUTH[@]}" "$FTP_URL/testdir/big2.bin" -o "$TMPDIR/big2.dl" >/dev/null; then
+  echo "[error] Download after resumed upload failed" >&2; FAIL=1;
+fi
+cmp "$TMPDIR/big2.bin" "$TMPDIR/big2.dl" || { echo "[error] Resumed upload content mismatch" >&2; FAIL=1; }
 
 # End extended checks
 
 # Run additional tests using Python ftplib (active and passive data modes)
 if command -v python3 >/dev/null 2>&1; then
-  python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"
+  if ! python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"; then
+    echo "[error] ftplib tests failed" >&2; FAIL=1;
+  fi
 else
   echo "[warn] python3 not found; skipping ftplib tests"
 fi
 
-echo "[ok] All integration tests passed"
+if [[ $FAIL -eq 0 ]]; then
+  echo "[ok] All integration tests passed"
+else
+  echo "[warn] Some checks failed; see output above"
+  exit 1
+fi
 

@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using FtpServer.Core.InMemory;
-using FtpServer.Core.Server;
 
 namespace FtpServer.Tests;
 
@@ -34,13 +33,13 @@ public class ConcurrencyTests
 
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
-        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
         var serverTasks = new List<Task>();
         for (int i = 0; i < clients.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             serverTasks.Add(session.RunAsync(cts.Token));
         }

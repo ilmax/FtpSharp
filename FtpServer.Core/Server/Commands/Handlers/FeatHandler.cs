@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Protocol;
 
 namespace FtpServer.Core.Server.Commands;

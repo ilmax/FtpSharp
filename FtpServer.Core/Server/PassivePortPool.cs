@@ -66,7 +66,7 @@ public sealed class PassiveLease : IAsyncDisposable
 
     public ValueTask DisposeAsync()
     {
-        if (System.Threading.Interlocked.Exchange(ref _disposed, 1) == 0)
+        if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
             _pool.Release(Port, Listener);
         }

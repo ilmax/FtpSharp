@@ -15,15 +15,15 @@ public sealed class PluginRegistry : IAuthenticatorFactory, IStorageProviderFact
     IAuthenticator IAuthenticatorFactory.Create(string name)
         => name switch
         {
-            "InMemory" => _sp.GetRequiredService<FtpServer.Core.InMemory.InMemoryAuthenticator>(),
+            "InMemory" => _sp.GetRequiredService<InMemory.InMemoryAuthenticator>(),
             _ => throw new NotSupportedException($"Unknown authenticator '{name}'")
         };
 
     IStorageProvider IStorageProviderFactory.Create(string name)
         => name switch
         {
-            "InMemory" => _sp.GetRequiredService<FtpServer.Core.InMemory.InMemoryStorageProvider>(),
-            "FileSystem" => _sp.GetRequiredService<FtpServer.Core.FileSystem.FileSystemStorageProvider>(),
+            "InMemory" => _sp.GetRequiredService<InMemory.InMemoryStorageProvider>(),
+            "FileSystem" => _sp.GetRequiredService<FileSystem.FileSystemStorageProvider>(),
             _ => throw new NotSupportedException($"Unknown storage provider '{name}'")
         };
 }

@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Protocol;
 
 namespace FtpServer.Core.Server.Commands;
@@ -26,7 +23,7 @@ public interface IFtpSessionContext
     string? PendingUser { get; set; }
     bool ShouldQuit { get; set; }
     string? PendingRenameFrom { get; set; }
-    System.Threading.Tasks.Task<System.IO.Stream> OpenDataStreamAsync(System.Threading.CancellationToken ct);
-    FtpServer.Core.Protocol.PassiveEndpoint EnterPassiveMode();
+    Task<Stream> OpenDataStreamAsync(CancellationToken ct);
+    PassiveEndpoint EnterPassiveMode();
     System.Net.IPEndPoint? ActiveEndpoint { get; set; }
 }

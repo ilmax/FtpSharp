@@ -1,9 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Configuration;
-using FtpServer.Core.Observability;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

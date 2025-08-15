@@ -3,20 +3,50 @@ import sys
 import ftplib
 import io
 import os
-import random
-import string
+import time
 
 port = int(sys.argv[1]) if len(sys.argv) > 1 else 2121
 host = '127.0.0.1'
+debug = int(os.environ.get('FTPLIB_DEBUG', '0'))
 
 # Helper
 def rand_bytes(n):
     return os.urandom(n)
 
+def login_anon_with_retry(host, port, attempts=3, delay=0.2):
+    """Login as anonymous sending an empty PASS explicitly.
+    Some ftplib versions replace empty passwords with 'anonymous@', so we use low-level commands.
+    """
+    for _ in range(attempts):
+        try:
+            ftp = ftplib.FTP()
+            ftp.connect(host, port, timeout=5)
+            # USER
+            ftp.putcmd('USER anonymous')
+            resp = ftp.getresp()
+            if not (resp.startswith('331') or resp.startswith('230')):
+                raise ftplib.error_perm(resp)
+            # If already logged in (230), we're done; otherwise send empty PASS
+            if not resp.startswith('230'):
+                ftp.putcmd('PASS')
+                resp2 = ftp.getresp()
+                if not resp2.startswith('230'):
+                    raise ftplib.error_perm(resp2)
+            return ftp
+        except Exception:
+            try:
+                ftp.close()
+            except Exception:
+                pass
+            time.sleep(delay)
+    raise RuntimeError('Unable to log in as anonymous after retries')
+
 def main():
-    ftp = ftplib.FTP()
-    ftp.connect(host, port, timeout=5)
-    ftp.login('anonymous', '')
+    ftp = login_anon_with_retry(host, port)
+    if debug:
+        ftp.set_debuglevel(debug)
+    # default to passive first
+    ftp.set_pasv(True)
 
     # Passive mode RETR/STOR
     ftp.mkd('py')

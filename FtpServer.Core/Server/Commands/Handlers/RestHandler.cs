@@ -1,14 +1,11 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Protocol;
 
 namespace FtpServer.Core.Server.Commands;
 
 internal sealed class RestHandler : IFtpCommandHandler
 {
-    private readonly FtpServer.Core.Server.FtpSession _session;
-    public RestHandler(FtpServer.Core.Server.FtpSession session) => _session = session;
+    private readonly FtpSession _session;
+    public RestHandler(FtpSession session) => _session = session;
     public string Command => "REST";
     public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {

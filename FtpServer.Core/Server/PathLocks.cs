@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace FtpServer.Core.Server;
 
@@ -86,7 +84,7 @@ internal sealed class AsyncReaderWriterLock
 /// </summary>
 internal static class PathLocks
 {
-    private static readonly ConcurrentDictionary<string, AsyncReaderWriterLock> _locks = new(System.StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, AsyncReaderWriterLock> _locks = new(StringComparer.Ordinal);
 
     public static async Task<IAsyncDisposable> AcquireReadAsync(string path, CancellationToken ct)
         => await Get(path).AcquireReadAsync(ct).ConfigureAwait(false);

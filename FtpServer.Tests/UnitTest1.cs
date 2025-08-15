@@ -1,9 +1,6 @@
-﻿using System.Net.Sockets;
-using System.Text;
-using FtpServer.Core.Abstractions;
+﻿using System.Text;
 using FtpServer.Core.InMemory;
 using FtpServer.Core.Protocol;
-using FtpServer.Core.Server;
 using FtpServer.Core.Server.Commands;
 
 namespace FtpServer.Tests;
@@ -99,7 +96,7 @@ public class HandlerTests
     [Fact]
     public async Task ModeHandler_Accepts_S_Only()
     {
-        var h = new FtpServer.Core.Server.Commands.ModeHandler();
+        var h = new ModeHandler();
         var ctx = new FakeContext();
         using var ms = new MemoryStream();
         using var w = new StreamWriter(ms) { AutoFlush = true };
@@ -113,7 +110,7 @@ public class HandlerTests
     [Fact]
     public async Task StruHandler_Accepts_F_Only()
     {
-        var h = new FtpServer.Core.Server.Commands.StruHandler();
+        var h = new StruHandler();
         var ctx = new FakeContext();
         using var ms = new MemoryStream();
         using var w = new StreamWriter(ms) { AutoFlush = true };
@@ -127,7 +124,7 @@ public class HandlerTests
     [Fact]
     public async Task AlloHandler_Always_202()
     {
-        var h = new FtpServer.Core.Server.Commands.AlloHandler();
+        var h = new AlloHandler();
         var ctx = new FakeContext();
         using var ms = new MemoryStream();
         using var w = new StreamWriter(ms) { AutoFlush = true };

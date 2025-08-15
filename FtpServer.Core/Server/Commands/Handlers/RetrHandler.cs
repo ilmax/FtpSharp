@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
 using FtpServer.Core.Observability;
@@ -36,15 +33,15 @@ internal sealed class RetrHandler : IFtpCommandHandler
         await writer.WriteLineAsync("150 Opening data connection for RETR");
         try
         {
-            await using var _lease = await FtpServer.Core.Server.PathLocks.AcquireReadAsync(path, ct);
+            await using var _lease = await PathLocks.AcquireReadAsync(path, ct);
             using var rs = await context.OpenDataStreamAsync(ct);
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
             long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
-            var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
-            (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
-            var sid = (context as FtpServer.Core.Server.FtpSession)!.SessionId;
+            var offset = (context as FtpSession)!.RestartOffset;
+            (context as FtpSession)!.RestartOffset = 0; // consume
+            var sid = (context as FtpSession)!.SessionId;
             await foreach (var chunk in (offset > 0 ? _storage.ReadFromOffsetAsync(path, offset, 8192, token) : _storage.ReadAsync(path, 8192, token)))
             {
                 if (context.TransferType == 'A')
@@ -54,14 +51,14 @@ internal sealed class RetrHandler : IFtpCommandHandler
                     await rs.WriteAsync(data, 0, data.Length, token);
                     Metrics.BytesSent.Add(data.Length);
                     Metrics.SessionBytesSent.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid));
-                    sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                    sent += data.Length; sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                 }
                 else
                 {
                     await rs.WriteAsync(chunk, token);
                     Metrics.BytesSent.Add(chunk.Length);
                     Metrics.SessionBytesSent.Add(chunk.Length, new KeyValuePair<string, object?>("session_id", sid));
-                    sent += chunk.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                    sent += chunk.Length; sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                 }
             }
             await writer.WriteLineAsync("226 Transfer complete");

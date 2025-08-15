@@ -1,7 +1,4 @@
-using System.IO;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Protocol;
 
@@ -45,7 +42,7 @@ internal sealed class ListHandler : IFtpCommandHandler
         var owner = "owner";
         var group = "group";
         var size = e.Length ?? 0;
-        var date = System.DateTimeOffset.Now.ToString("MMM dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        var date = DateTimeOffset.Now.ToString("MMM dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         return $"{perms}{rights} {links,3} {owner,5} {group,5} {size,8} {date} {e.Name}";
     }
 }
