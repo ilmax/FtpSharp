@@ -243,6 +243,20 @@ public sealed class FtpSession
                     }
                     break;
                 case "RETR":
+                    {
+                        var path = ResolvePath(parsed.Argument);
+                        var entry = await _storage.GetEntryAsync(path, ct);
+                        if (entry is null)
+                        {
+                            await writer.WriteLineAsync("550 File not found");
+                            break;
+                        }
+                        if (entry.IsDirectory)
+                        {
+                            await writer.WriteLineAsync("550 Not a plain file");
+                            break;
+                        }
+                    }
                     await writer.WriteLineAsync("150 Opening data connection for RETR");
                     try
                     {
@@ -275,6 +289,15 @@ public sealed class FtpSession
                     }
                     break;
                 case "STOR":
+                    {
+                        var path = ResolvePath(parsed.Argument);
+                        var entry = await _storage.GetEntryAsync(path, ct);
+                        if (entry is not null && entry.IsDirectory)
+                        {
+                            await writer.WriteLineAsync("550 Not a plain file");
+                            break;
+                        }
+                    }
                     await writer.WriteLineAsync("150 Opening data connection for STOR");
                     try
                     {
