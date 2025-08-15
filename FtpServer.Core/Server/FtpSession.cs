@@ -192,8 +192,16 @@ public sealed class FtpSession
                     await writer.WriteLineAsync("250 Requested file action okay, completed");
                     break;
                 case "DELE":
-                    await _storage.DeleteAsync(ResolvePath(parsed.Argument), recursive: false, ct);
-                    await writer.WriteLineAsync("250 Requested file action okay, completed");
+                    {
+                        var path = ResolvePath(parsed.Argument);
+                        if (!await _storage.ExistsAsync(path, ct))
+                        {
+                            await writer.WriteLineAsync("550 File not found");
+                            break;
+                        }
+                        await _storage.DeleteAsync(path, recursive: false, ct);
+                        await writer.WriteLineAsync("250 Requested file action okay, completed");
+                    }
                     break;
                 case "RETR":
                     await writer.WriteLineAsync("150 Opening data connection for RETR");

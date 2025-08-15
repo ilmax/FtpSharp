@@ -47,6 +47,73 @@ public class FtpSessionTests
     }
 
     [Fact]
+    public async Task Stor_Creates_Missing_Parent_And_Succeeds()
+    {
+        var storage = new InMemoryStorageProvider();
+        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
+
+        var clientTask = Task.Run(async () =>
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(ep.Address, ep.Port);
+            using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+            using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+
+            _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
+            await writer.WriteLineAsync("STOR /z/new.bin"); _ = await reader.ReadLineAsync();
+            var buf = Encoding.ASCII.GetBytes("hi");
+            var dns = dc.GetStream();
+            await dns.WriteAsync(buf, 0, buf.Length);
+            await dns.FlushAsync();
+            dc.Close();
+            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+        });
+
+        using var serverClient = await listener.AcceptTcpClientAsync();
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
+
+        var size = await storage.GetSizeAsync("/z/new.bin", CancellationToken.None);
+        Assert.Equal(2, size);
+    }
+
+    [Fact]
+    public async Task Dele_Missing_Returns_550()
+    {
+        var storage = new InMemoryStorageProvider();
+        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
+
+        var clientTask = Task.Run(async () =>
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(ep.Address, ep.Port);
+            using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+            using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+
+            _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("DELE /missing.txt"); var resp = await reader.ReadLineAsync();
+            Assert.StartsWith("550", resp);
+        });
+
+        using var serverClient = await listener.AcceptTcpClientAsync();
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
+    }
+    [Fact]
     public async Task Port_Unreachable_List_Returns_425()
     {
         var storage = new InMemoryStorageProvider();
