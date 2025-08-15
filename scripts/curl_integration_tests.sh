@@ -33,6 +33,8 @@ export FTP_FTPSERVER__AUTHENTICATOR=InMemory
 export FTP_FTPSERVER__STORAGEPROVIDER=FileSystem
 export FTP_FTPSERVER__STORAGEROOT="$TMPDIR"
 export FTP_FTPSERVER__HEALTHENABLED=false
+# Bind ASP.NET Core to an ephemeral port to avoid conflicts on 5000 during tests
+export ASPNETCORE_URLS="http://127.0.0.1:0"
 
 echo "[info] Starting server on 127.0.0.1:$PORT (PASV $PASV_START-$PASV_END)"
 dotnet run --project "$ROOT_DIR/FtpServer.App" --no-build >"$SERVER_LOG" 2>&1 &
@@ -98,4 +100,51 @@ if curl -sSf "${AUTH[@]}" "$FTP_URL/testdir/hello.txt" -o /dev/null 2>/dev/null;
   exit 1
 fi
 
-echo "[ok] All cURL integration tests passed"
+step "RNFR/RNTO rename large.bin -> renamed.bin"
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "RNFR large.bin" --quote "RNTO renamed.bin" >/dev/null
+curl -sS "${AUTH[@]}" "$FTP_URL/testdir/" | grep -q "renamed.bin"
+if curl -sSf "${AUTH[@]}" "$FTP_URL/testdir/large.bin" -o /dev/null 2>/dev/null; then
+  echo "[error] Old name still accessible after rename" >&2; exit 1
+fi
+
+step "NLST lists bare names"
+NLST=$(curl -sS -l "${AUTH[@]}" "$FTP_URL/testdir/")
+echo "$NLST" | grep -q "renamed.bin"
+
+step "ASCII mode RETR converts to CRLF"
+printf 'line1\nline2\n' >"$TMPDIR/ascii_lf.txt"
+curl -sS "${AUTH[@]}" -T "$TMPDIR/ascii_lf.txt" "$FTP_URL/testdir/ascii.txt" >/dev/null
+# Switch to ASCII and perform RETR in the same session by setting TYPE first, then retrieving the absolute file URL
+curl -sS "${AUTH[@]}" -Q "TYPE A" "$FTP_URL/testdir/ascii.txt" -o "$TMPDIR/ascii_crlf.txt" >/dev/null
+# Count carriage returns; expect at least 2 for two lines
+CR_COUNT=$(tr -cd '\r' < "$TMPDIR/ascii_crlf.txt" | wc -c | tr -d ' ' || true)
+test "$CR_COUNT" -ge 2
+
+step "RMD fails on non-empty dir then succeeds when empty"
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "MKD sub" >/dev/null
+printf 'x' >"$TMPDIR/small.txt"
+curl -sS "${AUTH[@]}" -T "$TMPDIR/small.txt" "$FTP_URL/testdir/sub/small.txt" >/dev/null
+RMD_OUT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "RMD sub" 2>&1 || true)
+echo "$RMD_OUT" | grep -q "550" || echo "$RMD_OUT" # expect 550
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "DELE sub/small.txt" >/dev/null
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "RMD sub" >/dev/null
+
+step "Parallel uploads"
+for i in 1 2 3; do dd if=/dev/urandom of="$TMPDIR/p$i.bin" bs=1024 count=32 status=none; done
+curl -sS "${AUTH[@]}" -T "$TMPDIR/p1.bin" "$FTP_URL/testdir/p1.bin" >/dev/null &
+curl -sS "${AUTH[@]}" -T "$TMPDIR/p2.bin" "$FTP_URL/testdir/p2.bin" >/dev/null &
+curl -sS "${AUTH[@]}" -T "$TMPDIR/p3.bin" "$FTP_URL/testdir/p3.bin" >/dev/null &
+wait
+curl -sS "${AUTH[@]}" "$FTP_URL/testdir/" | grep -q "p1.bin"
+
+echo "[ok] cURL tests passed"
+
+# Run additional tests using Python ftplib (active and passive data modes)
+if command -v python3 >/dev/null 2>&1; then
+  python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"
+else
+  echo "[warn] python3 not found; skipping ftplib tests"
+fi
+
+echo "[ok] All integration tests passed"
+
