@@ -27,4 +27,6 @@ public interface IFtpSessionContext
     bool ShouldQuit { get; set; }
     string? PendingRenameFrom { get; set; }
     System.Threading.Tasks.Task<System.IO.Stream> OpenDataStreamAsync(System.Threading.CancellationToken ct);
+    FtpServer.Core.Protocol.PassiveEndpoint EnterPassiveMode();
+    System.Net.IPEndPoint? ActiveEndpoint { get; set; }
 }

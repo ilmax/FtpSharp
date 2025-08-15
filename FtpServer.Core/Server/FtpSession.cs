@@ -58,6 +58,12 @@ public sealed class FtpSession : IFtpSessionContext
             ["RNTO"] = new RntoHandler(_storage),
             ["LIST"] = new ListHandler(_storage),
             ["NLST"] = new NlstHandler(_storage),
+            ["PASV"] = new PasvHandler(),
+            ["EPSV"] = new EpsvHandler(),
+            ["PORT"] = new PortHandler(),
+            ["EPRT"] = new EprtHandler(),
+            ["RETR"] = new RetrHandler(_storage),
+            ["STOR"] = new StorHandler(_storage),
         };
     }
 
@@ -68,6 +74,7 @@ public sealed class FtpSession : IFtpSessionContext
     public string? PendingUser { get => _pendingUser; set => _pendingUser = value; }
     public bool ShouldQuit { get; set; }
     public string? PendingRenameFrom { get => _pendingRenameFrom; set => _pendingRenameFrom = value; }
+    public System.Net.IPEndPoint? ActiveEndpoint { get => _activeEndpoint; set => _activeEndpoint = value; }
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -90,123 +97,10 @@ public sealed class FtpSession : IFtpSessionContext
         }
         switch (parsed.Command)
             {
-                case "PASV":
-                    var pe = EnterPassiveMode();
-                    var p1 = pe.Port / 256; var p2 = pe.Port % 256;
-                    await writer.WriteLineAsync($"227 Entering Passive Mode ({pe.IpAddress.Replace('.', ',')},{p1},{p2})");
-                    break;
-                case "EPSV":
-                    var epe = EnterPassiveMode();
-                    await writer.WriteLineAsync($"229 Entering Extended Passive Mode (|||{epe.Port}|)");
-                    break;
-                case "PORT":
-                    if (!TryParsePort(parsed.Argument, out var ep))
-                    {
-                        await writer.WriteLineAsync("501 Syntax error in parameters or arguments");
-                        break;
-                    }
-                    _activeEndpoint = ep;
-                    await writer.WriteLineAsync("200 Command okay");
-                    break;
-                case "EPRT":
-                    if (!TryParseEprt(parsed.Argument, out var ep2))
-                    {
-                        await writer.WriteLineAsync("501 Syntax error in parameters or arguments");
-                        break;
-                    }
-                    _activeEndpoint = ep2;
-                    await writer.WriteLineAsync("200 Command okay");
-                    break;
                 
                 
-                case "RETR":
-                    {
-                        var path = ResolvePath(parsed.Argument);
-                        var entry = await _storage.GetEntryAsync(path, ct);
-                        if (entry is null)
-                        {
-                            await writer.WriteLineAsync("550 File not found");
-                            break;
-                        }
-                        if (entry.IsDirectory)
-                        {
-                            await writer.WriteLineAsync("550 Not a plain file");
-                            break;
-                        }
-                    }
-                    await writer.WriteLineAsync("150 Opening data connection for RETR");
-                    try
-                    {
-                        using (var rs = await OpenDataStreamAsync(ct))
-                        using (var bw = new BinaryWriter(rs, Encoding.ASCII, leaveOpen: true))
-                        {
-                            await foreach (var chunk in _storage.ReadAsync(ResolvePath(parsed.Argument), 8192, ct))
-                            {
-                                if (_type == 'A')
-                                {
-                                    // naive ASCII: convert \n to \r\n
-                                    var text = Encoding.ASCII.GetString(chunk.Span);
-                                    var data = Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
-                                    await rs.WriteAsync(data, 0, data.Length, ct);
-                                }
-                                else
-                                {
-                                    if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                                        await rs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-                                    else
-                                        await rs.WriteAsync(chunk.ToArray(), ct);
-                                }
-                            }
-                        }
-                        await writer.WriteLineAsync("226 Transfer complete");
-                    }
-                    catch (Exception)
-                    {
-                        await writer.WriteLineAsync("425 Can't open data connection");
-                    }
-                    break;
-                case "STOR":
-                    {
-                        var path = ResolvePath(parsed.Argument);
-                        var entry = await _storage.GetEntryAsync(path, ct);
-                        if (entry is not null && entry.IsDirectory)
-                        {
-                            await writer.WriteLineAsync("550 Not a plain file");
-                            break;
-                        }
-                    }
-                    await writer.WriteLineAsync("150 Opening data connection for STOR");
-                    try
-                    {
-                        using (var storStream = await OpenDataStreamAsync(ct))
-                        {
-                            async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
-                            {
-                                var buffer = new byte[8192];
-                                int read;
-                                while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
-                                {
-                                    if (_type == 'A')
-                                    {
-                                        // collapse CRLF to LF for ASCII storage
-                                        var text = Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
-                                        yield return Encoding.ASCII.GetBytes(text);
-                                    }
-                                    else
-                                    {
-                                        yield return new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
-                                    }
-                                }
-                            }
-                            await _storage.WriteAsync(ResolvePath(parsed.Argument), ReadStream(ct), ct);
-                        }
-                        await writer.WriteLineAsync("226 Transfer complete");
-                    }
-                    catch (Exception)
-                    {
-                        await writer.WriteLineAsync("425 Can't open data connection");
-                    }
-                    break;
+                
+                
                 
                 
                 
@@ -217,7 +111,7 @@ public sealed class FtpSession : IFtpSessionContext
         }
     }
 
-    private PassiveEndpoint EnterPassiveMode()
+    public PassiveEndpoint EnterPassiveMode()
     {
         _pasvListener?.Stop();
         _pasvListener = null;

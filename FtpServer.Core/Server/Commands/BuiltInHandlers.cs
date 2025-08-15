@@ -240,6 +240,99 @@ internal sealed class NlstHandler : IFtpCommandHandler
     }
 }
 
+internal sealed class RetrHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public RetrHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "RETR";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        var entry = await _storage.GetEntryAsync(path, ct);
+        if (entry is null)
+        {
+            await writer.WriteLineAsync("550 File not found");
+            return;
+        }
+        if (entry.IsDirectory)
+        {
+            await writer.WriteLineAsync("550 Not a plain file");
+            return;
+        }
+        await writer.WriteLineAsync("150 Opening data connection for RETR");
+        try
+        {
+            using var rs = await context.OpenDataStreamAsync(ct);
+            await foreach (var chunk in _storage.ReadAsync(path, 8192, ct))
+            {
+                if (context.TransferType == 'A')
+                {
+                    var text = System.Text.Encoding.ASCII.GetString(chunk.Span);
+                    var data = System.Text.Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
+                    await rs.WriteAsync(data, 0, data.Length, ct);
+                }
+                else
+                {
+                    if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
+                        await rs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
+                    else
+                        await rs.WriteAsync(chunk.ToArray(), ct);
+                }
+            }
+            await writer.WriteLineAsync("226 Transfer complete");
+        }
+        catch
+        {
+            await writer.WriteLineAsync("425 Can't open data connection");
+        }
+    }
+}
+
+internal sealed class StorHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public StorHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "STOR";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        var entry = await _storage.GetEntryAsync(path, ct);
+        if (entry is not null && entry.IsDirectory)
+        {
+            await writer.WriteLineAsync("550 Not a plain file");
+            return;
+        }
+        await writer.WriteLineAsync("150 Opening data connection for STOR");
+        try
+        {
+            using var storStream = await context.OpenDataStreamAsync(ct);
+            async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
+            {
+                var buffer = new byte[8192];
+                int read;
+                while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                {
+                    if (context.TransferType == 'A')
+                    {
+                        var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
+                        yield return System.Text.Encoding.ASCII.GetBytes(text);
+                    }
+                    else
+                    {
+                        yield return new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                    }
+                }
+            }
+            await _storage.WriteAsync(path, ReadStream(ct), ct);
+            await writer.WriteLineAsync("226 Transfer complete");
+        }
+        catch
+        {
+            await writer.WriteLineAsync("425 Can't open data connection");
+        }
+    }
+}
+
 internal sealed class RnfrHandler : IFtpCommandHandler
 {
     private readonly IStorageProvider _storage;
@@ -360,5 +453,86 @@ internal sealed class HelpHandler : IFtpCommandHandler
             await writer.WriteLineAsync(" USER PASS SYST FEAT PWD CWD CDUP TYPE PASV EPSV PORT EPRT LIST NLST RETR STOR DELE MKD RMD SIZE RNFR RNTO STAT HELP QUIT");
             await writer.WriteLineAsync("214 Help OK.");
         }
+    }
+}
+
+internal sealed class PasvHandler : IFtpCommandHandler
+{
+    public string Command => "PASV";
+    public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var pe = context.EnterPassiveMode();
+        var p1 = pe.Port / 256; var p2 = pe.Port % 256;
+        return writer.WriteLineAsync($"227 Entering Passive Mode ({pe.IpAddress.Replace('.', ',')},{p1},{p2})");
+    }
+}
+
+internal sealed class EpsvHandler : IFtpCommandHandler
+{
+    public string Command => "EPSV";
+    public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var pe = context.EnterPassiveMode();
+        return writer.WriteLineAsync($"229 Entering Extended Passive Mode (|||{pe.Port}|)");
+    }
+}
+
+internal sealed class PortHandler : IFtpCommandHandler
+{
+    public string Command => "PORT";
+    public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        if (!TryParsePort(parsed.Argument, out var ep))
+            return writer.WriteLineAsync("501 Syntax error in parameters or arguments");
+        context.ActiveEndpoint = ep;
+        return writer.WriteLineAsync("200 Command okay");
+    }
+
+    private static bool TryParsePort(string arg, out System.Net.IPEndPoint? ep)
+    {
+        ep = null;
+        var parts = arg.Split(',');
+        if (parts.Length != 6) return false;
+        if (!byte.TryParse(parts[0], out var h1) || !byte.TryParse(parts[1], out var h2) ||
+            !byte.TryParse(parts[2], out var h3) || !byte.TryParse(parts[3], out var h4) ||
+            !byte.TryParse(parts[4], out var p1) || !byte.TryParse(parts[5], out var p2)) return false;
+        var addr = new System.Net.IPAddress(new byte[] { h1, h2, h3, h4 });
+        var port = p1 * 256 + p2;
+        ep = new System.Net.IPEndPoint(addr, port);
+        return true;
+    }
+}
+
+internal sealed class EprtHandler : IFtpCommandHandler
+{
+    public string Command => "EPRT";
+    public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        if (!TryParseEprt(parsed.Argument, out var ep))
+            return writer.WriteLineAsync("501 Syntax error in parameters or arguments");
+        context.ActiveEndpoint = ep;
+        return writer.WriteLineAsync("200 Command okay");
+    }
+
+    private static bool TryParseEprt(string arg, out System.Net.IPEndPoint? ep)
+    {
+        ep = null;
+        if (string.IsNullOrEmpty(arg)) return false;
+        var delim = arg[0];
+        var parts = arg.Split(delim);
+        if (parts.Length < 5) return false;
+        if (!int.TryParse(parts[1], out var af)) return false;
+        var addrStr = parts[2];
+        if (!int.TryParse(parts[3], out var port)) return false;
+        try
+        {
+            var addr = System.Net.IPAddress.Parse(addrStr);
+            if ((af == 1 && addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) ||
+                (af == 2 && addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6))
+                return false;
+            ep = new System.Net.IPEndPoint(addr, port);
+            return true;
+        }
+        catch { return false; }
     }
 }
