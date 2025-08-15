@@ -13,6 +13,7 @@ namespace FtpServer.Core.InMemory;
 public sealed class InMemoryStorageProvider : IStorageProvider
 {
     private readonly ConcurrentDictionary<string, Node> _nodes = new(StringComparer.Ordinal);
+    private readonly object _gate = new();
 
     private abstract record Node;
     private sealed record DirNode(Dictionary<string, string> Children) : Node;
@@ -24,133 +25,150 @@ public sealed class InMemoryStorageProvider : IStorageProvider
     }
 
     public Task<bool> ExistsAsync(string path, CancellationToken ct)
-        => Task.FromResult(_nodes.ContainsKey(Norm(path)));
+    {
+        path = Norm(path);
+        lock (_gate)
+        {
+            return Task.FromResult(_nodes.ContainsKey(path));
+        }
+    }
 
     public Task<IReadOnlyList<FileSystemEntry>> ListAsync(string path, CancellationToken ct)
     {
         path = Norm(path);
-        if (!_nodes.TryGetValue(path, out var node) || node is not DirNode dir)
-            return Task.FromResult<IReadOnlyList<FileSystemEntry>>(Array.Empty<FileSystemEntry>());
-
-        var list = new List<FileSystemEntry>();
-        foreach (var (name, full) in dir.Children)
+        lock (_gate)
         {
-            if (_nodes.TryGetValue(full, out var child))
+            if (!_nodes.TryGetValue(path, out var node) || node is not DirNode dir)
+                return Task.FromResult<IReadOnlyList<FileSystemEntry>>(Array.Empty<FileSystemEntry>());
+
+            var list = new List<FileSystemEntry>(dir.Children.Count);
+            foreach (var (name, full) in dir.Children)
             {
-                if (child is DirNode)
-                    list.Add(new FileSystemEntry(name, full, true, null));
-                else if (child is FileNode f)
-                    list.Add(new FileSystemEntry(name, full, false, f.Content.Length));
+                if (_nodes.TryGetValue(full, out var child))
+                {
+                    if (child is DirNode)
+                        list.Add(new FileSystemEntry(name, full, true, null));
+                    else if (child is FileNode f)
+                        list.Add(new FileSystemEntry(name, full, false, f.Content.Length));
+                }
             }
+            return Task.FromResult<IReadOnlyList<FileSystemEntry>>(list);
         }
-        return Task.FromResult<IReadOnlyList<FileSystemEntry>>(list);
     }
 
     public Task CreateDirectoryAsync(string path, CancellationToken ct)
     {
         path = Norm(path);
-        EnsureParentDir(path);
-        _nodes.TryAdd(path, new DirNode(new()));
-        var parent = Parent(path);
-        if (_nodes[parent] is DirNode pd)
+        lock (_gate)
         {
-            pd.Children[Name(path)] = path;
+            EnsureParentDirLocked(path);
+            _nodes.TryAdd(path, new DirNode(new()));
+            var parent = Parent(path);
+            if (_nodes[parent] is DirNode pd)
+            {
+                pd.Children[Name(path)] = path;
+            }
+            return Task.CompletedTask;
         }
-        return Task.CompletedTask;
     }
 
     public Task DeleteAsync(string path, bool recursive, CancellationToken ct)
     {
         path = Norm(path);
-        if (!_nodes.TryGetValue(path, out var node)) return Task.CompletedTask;
-        if (node is DirNode d && d.Children.Count > 0 && !recursive)
-            throw new IOException("Directory not empty");
+        lock (_gate)
+        {
+            if (!_nodes.TryGetValue(path, out var node)) return Task.CompletedTask;
+            if (node is DirNode d && d.Children.Count > 0 && !recursive)
+                throw new IOException("Directory not empty");
 
-        // naive delete
-        if (node is DirNode d2 && recursive)
-        {
-            foreach (var (_, full) in d2.Children.ToArray())
-                DeleteAsync(full, true, ct).GetAwaiter().GetResult();
+            DeleteLocked(path, recursive);
+            return Task.CompletedTask;
         }
-        // remove entry from parent directory
-        var parent = Parent(path);
-        if (_nodes.TryGetValue(parent, out var pnode) && pnode is DirNode pd)
-        {
-            pd.Children.Remove(Name(path));
-        }
-        _nodes.TryRemove(path, out _);
-        return Task.CompletedTask;
     }
 
     public Task<long> GetSizeAsync(string path, CancellationToken ct)
     {
         path = Norm(path);
-        if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
-            return Task.FromResult((long)f.Content.Length);
-        return Task.FromResult(0L);
+        lock (_gate)
+        {
+            if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
+                return Task.FromResult((long)f.Content.Length);
+            return Task.FromResult(0L);
+        }
     }
 
     public Task<FileSystemEntry?> GetEntryAsync(string path, CancellationToken ct)
     {
         path = Norm(path);
-        if (_nodes.TryGetValue(path, out var node))
+        lock (_gate)
         {
-            if (node is DirNode)
-                return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, true, null));
-            if (node is FileNode f)
-                return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, false, f.Content.Length));
+            if (_nodes.TryGetValue(path, out var node))
+            {
+                if (node is DirNode)
+                    return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, true, null));
+                if (node is FileNode f)
+                    return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, false, f.Content.Length));
+            }
+            return Task.FromResult<FileSystemEntry?>(null);
         }
-        return Task.FromResult<FileSystemEntry?>(null);
     }
 
     public Task RenameAsync(string fromPath, string toPath, CancellationToken ct)
     {
         fromPath = Norm(fromPath);
         toPath = Norm(toPath);
-        if (!_nodes.TryGetValue(fromPath, out var node)) return Task.CompletedTask;
-
-        // Ensure destination parent exists
-        EnsureParentDir(toPath);
-
-        // Move node reference
-        _nodes[toPath] = node;
-        _nodes.TryRemove(fromPath, out _);
-
-        // Update parent directory child listings
-        var fromParent = Parent(fromPath);
-        var toParent = Parent(toPath);
-        var name = Name(toPath);
-        if (_nodes.TryGetValue(fromParent, out var fp) && fp is DirNode fpd)
+        lock (_gate)
         {
-            fpd.Children.Remove(Name(fromPath));
+            if (!_nodes.TryGetValue(fromPath, out var node)) return Task.CompletedTask;
+
+            // Ensure destination parent exists
+            EnsureParentDirLocked(toPath);
+
+            // Move node reference
+            _nodes[toPath] = node;
+            _nodes.TryRemove(fromPath, out _);
+
+            // Update parent directory child listings
+            var fromParent = Parent(fromPath);
+            var toParent = Parent(toPath);
+            var name = Name(toPath);
+            if (_nodes.TryGetValue(fromParent, out var fp) && fp is DirNode fpd)
+            {
+                fpd.Children.Remove(Name(fromPath));
+            }
+            if (_nodes.TryGetValue(toParent, out var tp) && tp is DirNode tpd)
+            {
+                tpd.Children[name] = toPath;
+            }
+            return Task.CompletedTask;
         }
-        if (_nodes.TryGetValue(toParent, out var tp) && tp is DirNode tpd)
-        {
-            tpd.Children[name] = toPath;
-        }
-        return Task.CompletedTask;
     }
 
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadAsync(string path, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         path = Norm(path);
-        if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
+        byte[]? snapshot = null;
+        lock (_gate)
         {
-            var data = f.Content;
-            for (int i = 0; i < data.Length; i += bufferSize)
+            if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
             {
-                var len = Math.Min(bufferSize, data.Length - i);
-                yield return new ReadOnlyMemory<byte>(data, i, len);
-                await Task.Yield();
-                ct.ThrowIfCancellationRequested();
+                snapshot = f.Content.ToArray();
             }
+        }
+        if (snapshot is null) yield break;
+        var data = snapshot;
+        for (int i = 0; i < data.Length; i += bufferSize)
+        {
+            var len = Math.Min(bufferSize, data.Length - i);
+            yield return new ReadOnlyMemory<byte>(data, i, len);
+            await Task.Yield();
+            ct.ThrowIfCancellationRequested();
         }
     }
 
     public async Task WriteAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
     {
         path = Norm(path);
-        EnsureParentDir(path);
         using var ms = new MemoryStream();
         await foreach (var chunk in content.WithCancellation(ct))
         {
@@ -159,10 +177,15 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             else
                 await ms.WriteAsync(chunk.ToArray(), ct);
         }
-        _nodes[path] = new FileNode(ms.ToArray());
-        var parent = Parent(path);
-        if (_nodes[parent] is DirNode pd)
-            pd.Children[Name(path)] = path;
+        var data = ms.ToArray();
+        lock (_gate)
+        {
+            EnsureParentDirLocked(path);
+            _nodes[path] = new FileNode(data);
+            var parent = Parent(path);
+            if (_nodes[parent] is DirNode pd)
+                pd.Children[Name(path)] = path;
+        }
     }
 
     private static string Norm(string path)
@@ -185,12 +208,53 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         return i < 0 ? p : p[(i + 1)..];
     }
 
-    private void EnsureParentDir(string path)
+    private void EnsureParentDirLocked(string path)
     {
+        // assumes _gate is held
         var parent = Parent(path);
-        if (!_nodes.ContainsKey(parent))
+        if (_nodes.ContainsKey(parent)) return;
+        // create chain of missing directories
+        var stack = new Stack<string>();
+        var cur = parent;
+        while (cur != "/" && !_nodes.ContainsKey(cur))
         {
-            CreateDirectoryAsync(parent, CancellationToken.None).GetAwaiter().GetResult();
+            stack.Push(cur);
+            cur = Parent(cur);
         }
+        // ensure root exists
+        if (!_nodes.ContainsKey("/"))
+            _nodes.TryAdd("/", new DirNode(new()));
+        while (stack.Count > 0)
+        {
+            var dir = stack.Pop();
+            _nodes.TryAdd(dir, new DirNode(new()));
+            var p = Parent(dir);
+            if (_nodes[p] is DirNode pd)
+                pd.Children[Name(dir)] = dir;
+        }
+    }
+
+    private void DeleteLocked(string path, bool recursive)
+    {
+        // assumes _gate is held
+        if (!_nodes.TryGetValue(path, out var node)) return;
+        if (node is DirNode d)
+        {
+            if (!recursive && d.Children.Count > 0)
+                throw new IOException("Directory not empty");
+            if (recursive)
+            {
+                foreach (var (_, full) in d.Children.ToArray())
+                {
+                    DeleteLocked(full, true);
+                }
+            }
+        }
+        var parent = Parent(path);
+        if (_nodes.TryGetValue(parent, out var pnode) && pnode is DirNode pd)
+        {
+            pd.Children.Remove(Name(path));
+        }
+        _nodes.TryRemove(path, out _);
     }
 }
