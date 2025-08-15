@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
 using FtpServer.Core.Abstractions;
+using FtpServer.Core.Protocol;
 
 namespace FtpServer.Core.Server;
 
@@ -35,11 +36,11 @@ public sealed class FtpSession
         {
             var line = await reader.ReadLineAsync();
             if (line is null) break;
-            var (cmd, arg) = Parse(line);
-            switch (cmd)
+        var parsed = FtpCommandParser.Parse(line);
+        switch (parsed.Command)
             {
                 case "USER":
-                    _pendingUser = arg;
+            _pendingUser = parsed.Argument;
                     await writer.WriteLineAsync("331 User name okay, need password.");
                     break;
                 case "PASS":
@@ -48,7 +49,7 @@ public sealed class FtpSession
                         await writer.WriteLineAsync("503 Bad sequence of commands");
                         break;
                     }
-                    var result = await _auth.AuthenticateAsync(_pendingUser, arg, ct);
+            var result = await _auth.AuthenticateAsync(_pendingUser, parsed.Argument, ct);
                     _isAuthenticated = result.Succeeded;
                     await writer.WriteLineAsync(result.Succeeded ? "230 User logged in, proceed." : "530 Not logged in.");
                     break;
@@ -68,10 +69,5 @@ public sealed class FtpSession
         }
     }
 
-    private static (string cmd, string arg) Parse(string line)
-    {
-        var idx = line.IndexOf(' ');
-        if (idx < 0) return (line.ToUpperInvariant(), string.Empty);
-        return (line[..idx].ToUpperInvariant(), line[(idx + 1)..]);
-    }
+    // Parsing moved to FtpCommandParser
 }
