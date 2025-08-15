@@ -101,6 +101,22 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         }
     }
 
+    public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadFromOffsetAsync(string path, long offset, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        var (phys, _, _) = Physical(path);
+        if (!File.Exists(phys)) yield break;
+        using var fs = new FileStream(phys, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync: true);
+        if (offset > 0) fs.Seek(offset, SeekOrigin.Begin);
+        var buffer = new byte[bufferSize];
+        int read;
+        while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+        {
+            yield return buffer.AsMemory(0, read).ToArray();
+            await Task.Yield();
+            ct.ThrowIfCancellationRequested();
+        }
+    }
+
     public async Task WriteAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
     {
         var (phys, _, _) = Physical(path);
@@ -113,6 +129,31 @@ public sealed class FileSystemStorageProvider : IStorageProvider
             else
                 await fs.WriteAsync(chunk.ToArray(), ct);
         }
+    }
+
+    public async Task AppendAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
+    {
+        var (phys, _, _) = Physical(path);
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(phys)!);
+        using var fs = new FileStream(phys, FileMode.Append, FileAccess.Write, FileShare.None, 8192, useAsync: true);
+        await foreach (var chunk in content.WithCancellation(ct))
+        {
+            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
+                await fs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
+            else
+                await fs.WriteAsync(chunk.ToArray(), ct);
+        }
+    }
+
+    public async Task WriteTruncateThenAppendAsync(string path, long truncateTo, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
+    {
+        var (phys, _, _) = Physical(path);
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(phys)!);
+        using (var fs = new FileStream(phys, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, 8192, useAsync: true))
+        {
+            fs.SetLength(Math.Max(0, truncateTo));
+        }
+        await AppendAsync(path, content, ct);
     }
 
     public Task RenameAsync(string fromPath, string toPath, CancellationToken ct)

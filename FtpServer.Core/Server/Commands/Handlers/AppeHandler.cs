@@ -14,7 +14,12 @@ internal sealed class AppeHandler : IFtpCommandHandler
     private readonly IOptions<FtpServerOptions> _options;
     private readonly FtpServer.Core.Server.FtpSession _session;
     public AppeHandler(IStorageProvider storage, IOptions<FtpServerOptions> options, FtpServer.Core.Server.FtpSession session)
-    { _storage = storage; _options = options; _session = session; }
+    {
+        _storage = storage;
+        _options = options;
+        _session = session;
+    }
+
     public string Command => "APPE";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
@@ -34,40 +39,12 @@ internal sealed class AppeHandler : IFtpCommandHandler
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
 
-            // Build content enumerable, appending to existing bytes if present, honoring REST offset if set
+            // Build content enumerable, appending; storage layer handles REST truncate when needed
             async IAsyncEnumerable<ReadOnlyMemory<byte>> Content([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
                 var offset = _session.RestartOffset;
                 _session.RestartOffset = 0; // consume
-                byte[]? existing = null;
                 long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
-                if (entry is not null)
-                {
-                    // read existing into memory (simple baseline implementation)
-                    using var ms = new MemoryStream();
-                    await foreach (var chunk in _storage.ReadAsync(path, 8192, token))
-                    {
-                        if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                            await ms.WriteAsync(seg.Array!, seg.Offset, seg.Count, token);
-                        else
-                            await ms.WriteAsync(chunk.ToArray(), token);
-                    }
-                    existing = ms.ToArray();
-                }
-
-                if (existing is not null)
-                {
-                    // If REST offset provided, keep only up to offset
-                    if (offset > 0 && offset <= existing.Length)
-                    {
-                        var prefix = new ReadOnlyMemory<byte>(existing, 0, (int)offset).ToArray();
-                        yield return prefix; sent += prefix.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
-                    }
-                    else
-                    {
-                        yield return existing; sent += existing.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
-                    }
-                }
 
                 var buffer = new byte[8192];
                 int read;
@@ -87,7 +64,11 @@ internal sealed class AppeHandler : IFtpCommandHandler
                 }
             }
 
-            await _storage.WriteAsync(path, Content(token), token);
+            var restOffset = _session.RestartOffset; // consumed above in Content()
+            if (restOffset > 0)
+                await _storage.WriteTruncateThenAppendAsync(path, restOffset, Content(token), token);
+            else
+                await _storage.AppendAsync(path, Content(token), token);
             await writer.WriteLineAsync("226 Transfer complete");
         }
         catch

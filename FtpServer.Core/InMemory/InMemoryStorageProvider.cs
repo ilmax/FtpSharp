@@ -166,10 +166,88 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         }
     }
 
+    public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadFromOffsetAsync(string path, long offset, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        path = Norm(path);
+        byte[]? snapshot = null;
+        lock (_gate)
+        {
+            if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
+            {
+                snapshot = f.Content.ToArray();
+            }
+        }
+        if (snapshot is null) yield break;
+        var start = (int)Math.Clamp(offset, 0, snapshot.Length);
+        for (int i = start; i < snapshot.Length; i += bufferSize)
+        {
+            var len = Math.Min(bufferSize, snapshot.Length - i);
+            yield return new ReadOnlyMemory<byte>(snapshot, i, len);
+            await Task.Yield(); ct.ThrowIfCancellationRequested();
+        }
+    }
+
     public async Task WriteAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
     {
         path = Norm(path);
         using var ms = new MemoryStream();
+        await foreach (var chunk in content.WithCancellation(ct))
+        {
+            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
+                await ms.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
+            else
+                await ms.WriteAsync(chunk.ToArray(), ct);
+        }
+        var data = ms.ToArray();
+        lock (_gate)
+        {
+            EnsureParentDirLocked(path);
+            _nodes[path] = new FileNode(data);
+            var parent = Parent(path);
+            if (_nodes[parent] is DirNode pd)
+                pd.Children[Name(path)] = path;
+        }
+    }
+
+    public async Task AppendAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
+    {
+        path = Norm(path);
+        using var ms = new MemoryStream();
+        lock (_gate)
+        {
+            if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
+                ms.Write(f.Content, 0, f.Content.Length);
+        }
+        await foreach (var chunk in content.WithCancellation(ct))
+        {
+            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
+                await ms.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
+            else
+                await ms.WriteAsync(chunk.ToArray(), ct);
+        }
+        var data = ms.ToArray();
+        lock (_gate)
+        {
+            EnsureParentDirLocked(path);
+            _nodes[path] = new FileNode(data);
+            var parent = Parent(path);
+            if (_nodes[parent] is DirNode pd)
+                pd.Children[Name(path)] = path;
+        }
+    }
+
+    public async Task WriteTruncateThenAppendAsync(string path, long truncateTo, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
+    {
+        path = Norm(path);
+        using var ms = new MemoryStream();
+        lock (_gate)
+        {
+            if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
+            {
+                var keep = (int)Math.Clamp(truncateTo, 0, f.Content.Length);
+                ms.Write(f.Content, 0, keep);
+            }
+        }
         await foreach (var chunk in content.WithCancellation(ct))
         {
             if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))

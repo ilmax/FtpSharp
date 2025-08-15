@@ -43,33 +43,8 @@ internal sealed class RetrHandler : IFtpCommandHandler
             long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
             var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
             (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
-            long skipped = 0;
-            await foreach (var chunk in _storage.ReadAsync(path, 8192, token))
+            await foreach (var chunk in (offset > 0 ? _storage.ReadFromOffsetAsync(path, offset, 8192, token) : _storage.ReadAsync(path, 8192, token)))
             {
-                if (offset > 0 && skipped + chunk.Length <= offset)
-                {
-                    skipped += chunk.Length;
-                    continue;
-                }
-                if (offset > 0 && skipped < offset)
-                {
-                    var sliceOffset = (int)(offset - skipped);
-                    var span = chunk.Span[sliceOffset..];
-                    var sliced = new ReadOnlyMemory<byte>(span.ToArray());
-                    skipped = offset;
-                    if (context.TransferType == 'A')
-                    {
-                        var textS = System.Text.Encoding.ASCII.GetString(sliced.Span);
-                        var dataS = System.Text.Encoding.ASCII.GetBytes(textS.Replace("\n", "\r\n"));
-                        await rs.WriteAsync(dataS, 0, dataS.Length, token); sent += dataS.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
-                        continue;
-                    }
-                    else
-                    {
-                        await rs.WriteAsync(sliced, token); sent += sliced.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
-                        continue;
-                    }
-                }
                 if (context.TransferType == 'A')
                 {
                     var text = System.Text.Encoding.ASCII.GetString(chunk.Span);

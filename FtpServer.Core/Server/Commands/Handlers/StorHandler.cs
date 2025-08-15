@@ -35,35 +35,11 @@ internal sealed class StorHandler : IFtpCommandHandler
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
+            var restOffset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
+            (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
             async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
-                var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
-                (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
                 long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
-                if (offset > 0)
-                {
-                    // Prepend existing up to offset to emulate truncate-then-append behavior
-                    var existing = await _storage.GetEntryAsync(path, token);
-                    if (existing is not null && existing.Length.HasValue)
-                    {
-                        var toKeep = (int)Math.Min(offset, existing.Length.Value);
-                        if (toKeep > 0)
-                        {
-                            var kept = new List<byte>(toKeep);
-                            int remaining = toKeep;
-                            await foreach (var chunk in _storage.ReadAsync(path, 8192, token))
-                            {
-                                var take = Math.Min(remaining, chunk.Length);
-                                kept.AddRange(chunk.Span[..take].ToArray());
-                                remaining -= take;
-                                if (remaining <= 0) break;
-                            }
-                            var k = kept.ToArray();
-                            yield return k;
-                            sent += k.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
-                        }
-                    }
-                }
                 var buffer = new byte[8192];
                 int read;
                 while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
@@ -81,7 +57,7 @@ internal sealed class StorHandler : IFtpCommandHandler
                     }
                 }
             }
-            await _storage.WriteAsync(path, ReadStream(token), token);
+            await _storage.WriteTruncateThenAppendAsync(path, restOffset, ReadStream(token), token);
             await writer.WriteLineAsync("226 Transfer complete");
         }
         catch
