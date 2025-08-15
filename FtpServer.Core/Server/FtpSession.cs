@@ -188,26 +188,54 @@ public sealed class FtpSession
                     }
                     break;
                 case "MKD":
-                    await _storage.CreateDirectoryAsync(ResolvePath(parsed.Argument), ct);
-                    await writer.WriteLineAsync($"257 \"{ResolvePath(parsed.Argument)}\" created");
+                    {
+                        var path = ResolvePath(parsed.Argument);
+                        if (await _storage.ExistsAsync(path, ct))
+                        {
+                            await writer.WriteLineAsync("550 Directory already exists");
+                            break;
+                        }
+                        await _storage.CreateDirectoryAsync(path, ct);
+                        await writer.WriteLineAsync($"257 \"{path}\" created");
+                    }
                     break;
                 case "RMD":
-                    try
                     {
-                        await _storage.DeleteAsync(ResolvePath(parsed.Argument), recursive: false, ct);
-                        await writer.WriteLineAsync("250 Requested file action okay, completed");
-                    }
-                    catch (IOException)
-                    {
-                        await writer.WriteLineAsync("550 Directory not empty");
+                        var path = ResolvePath(parsed.Argument);
+                        var entry = await _storage.GetEntryAsync(path, ct);
+                        if (entry is null)
+                        {
+                            await writer.WriteLineAsync("550 Directory not found");
+                            break;
+                        }
+                        if (!entry.IsDirectory)
+                        {
+                            await writer.WriteLineAsync("550 Not a directory");
+                            break;
+                        }
+                        try
+                        {
+                            await _storage.DeleteAsync(path, recursive: false, ct);
+                            await writer.WriteLineAsync("250 Requested file action okay, completed");
+                        }
+                        catch (IOException)
+                        {
+                            await writer.WriteLineAsync("550 Directory not empty");
+                        }
                     }
                     break;
                 case "DELE":
                     {
                         var path = ResolvePath(parsed.Argument);
-                        if (!await _storage.ExistsAsync(path, ct))
+                        var entry = await _storage.GetEntryAsync(path, ct);
+                        if (entry is null)
                         {
                             await writer.WriteLineAsync("550 File not found");
+                            break;
+                        }
+                        if (entry.IsDirectory)
+                        {
+                            await writer.WriteLineAsync("550 Not a plain file");
                             break;
                         }
                         await _storage.DeleteAsync(path, recursive: false, ct);
