@@ -47,12 +47,18 @@ public sealed class FtpSession : IFtpSessionContext
             ["STAT"] = new StatHandler(),
             ["TYPE"] = new TypeHandler(),
             ["SIZE"] = new SizeHandler(_storage),
+            ["QUIT"] = new QuitHandler(),
+            ["USER"] = new UserHandler(),
+            ["PASS"] = new PassHandler(_auth),
         };
     }
 
     private readonly Dictionary<string, IFtpCommandHandler> _handlers;
 
     public string Cwd { get => _cwd; set => _cwd = value; }
+    public bool IsAuthenticated { get => _isAuthenticated; set => _isAuthenticated = value; }
+    public string? PendingUser { get => _pendingUser; set => _pendingUser = value; }
+    public bool ShouldQuit { get; set; }
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -70,37 +76,11 @@ public sealed class FtpSession : IFtpSessionContext
         if (_handlers.TryGetValue(parsed.Command, out var handler))
         {
             await handler.HandleAsync(this, parsed, writer, ct);
+            if (ShouldQuit) return;
             continue;
         }
         switch (parsed.Command)
             {
-                case "USER":
-            _pendingUser = parsed.Argument;
-                    await writer.WriteLineAsync("331 User name okay, need password.");
-                    break;
-                case "PASS":
-                    if (_pendingUser is null)
-                    {
-                        await writer.WriteLineAsync("503 Bad sequence of commands");
-                        break;
-                    }
-            var result = await _auth.AuthenticateAsync(_pendingUser, parsed.Argument, ct);
-                    _isAuthenticated = result.Succeeded;
-                    await writer.WriteLineAsync(result.Succeeded ? "230 User logged in, proceed." : "530 Not logged in.");
-                    break;
-                case "FEAT":
-                    await writer.WriteLineAsync("211-Features");
-                    await writer.WriteLineAsync(" UTF8");
-                    await writer.WriteLineAsync(" PASV");
-                    await writer.WriteLineAsync(" EPSV");
-                    await writer.WriteLineAsync(" PORT");
-                    await writer.WriteLineAsync(" EPRT");
-                    await writer.WriteLineAsync(" SIZE");
-                    await writer.WriteLineAsync(" NLST");
-                    await writer.WriteLineAsync(" RNFR RNTO");
-                    await writer.WriteLineAsync(" TYPE A;I");
-                    await writer.WriteLineAsync("211 End");
-                    break;
                 case "CWD":
                     {
                         var path = ResolvePath(parsed.Argument);
@@ -113,12 +93,6 @@ public sealed class FtpSession : IFtpSessionContext
                         _cwd = path;
                         await writer.WriteLineAsync("250 Requested file action okay, completed");
                     }
-                    break;
-                case "TYPE":
-                    var t = parsed.Argument.ToUpperInvariant();
-                    if (t == "I" || t.StartsWith("I ")) { _type = 'I'; await writer.WriteLineAsync("200 Type set to I"); }
-                    else if (t == "A" || t.StartsWith("A ")) { _type = 'A'; await writer.WriteLineAsync("200 Type set to A"); }
-                    else await writer.WriteLineAsync("504 Command not implemented for that parameter");
                     break;
                 case "PASV":
                     var pe = EnterPassiveMode();
@@ -363,15 +337,7 @@ public sealed class FtpSession : IFtpSessionContext
                     _pendingRenameFrom = null;
                     await writer.WriteLineAsync("250 Requested file action okay, completed");
                     break;
-                case "STAT":
-                    await writer.WriteLineAsync("211-FTP Server status");
-                    await writer.WriteLineAsync($" Current directory: {_cwd}");
-                    await writer.WriteLineAsync(" Features: UTF8 PASV PORT EPSV EPRT TYPE SIZE NLST RNFR RNTO");
-                    await writer.WriteLineAsync("211 End");
-                    break;
-                case "QUIT":
-                    await writer.WriteLineAsync("221 Service closing control connection");
-                    return;
+                
                 default:
                     await writer.WriteLineAsync("502 Command not implemented");
                     break;

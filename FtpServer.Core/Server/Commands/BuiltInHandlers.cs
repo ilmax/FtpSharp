@@ -73,6 +73,44 @@ internal sealed class SizeHandler : IFtpCommandHandler
     }
 }
 
+internal sealed class QuitHandler : IFtpCommandHandler
+{
+    public string Command => "QUIT";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        await writer.WriteLineAsync("221 Service closing control connection");
+        context.ShouldQuit = true;
+    }
+}
+
+internal sealed class UserHandler : IFtpCommandHandler
+{
+    public string Command => "USER";
+    public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        context.PendingUser = parsed.Argument;
+        return writer.WriteLineAsync("331 User name okay, need password.");
+    }
+}
+
+internal sealed class PassHandler : IFtpCommandHandler
+{
+    private readonly IAuthenticator _auth;
+    public PassHandler(IAuthenticator auth) => _auth = auth;
+    public string Command => "PASS";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        if (context.PendingUser is null)
+        {
+            await writer.WriteLineAsync("503 Bad sequence of commands");
+            return;
+        }
+        var result = await _auth.AuthenticateAsync(context.PendingUser, parsed.Argument, ct);
+        context.IsAuthenticated = result.Succeeded;
+        await writer.WriteLineAsync(result.Succeeded ? "230 User logged in, proceed." : "530 Not logged in.");
+    }
+}
+
 internal sealed class NoopHandler : IFtpCommandHandler
 {
     public string Command => "NOOP";

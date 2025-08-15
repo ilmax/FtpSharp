@@ -22,4 +22,7 @@ public interface IFtpSessionContext
     string Cwd { get; set; }
     char TransferType { get; set; }
     string ResolvePath(string arg);
+    bool IsAuthenticated { get; set; }
+    string? PendingUser { get; set; }
+    bool ShouldQuit { get; set; }
 }
