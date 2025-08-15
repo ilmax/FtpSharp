@@ -87,13 +87,17 @@ public sealed class FtpSession
                     await writer.WriteLineAsync($"257 \"{_cwd}\" is current directory");
                     break;
                 case "CWD":
-                    if (!await _storage.ExistsAsync(parsed.Argument, ct))
                     {
-                        await writer.WriteLineAsync("550 Directory not found");
-                        break;
+                        var path = ResolvePath(parsed.Argument);
+                        var entry = await _storage.GetEntryAsync(path, ct);
+                        if (entry is null || !entry.IsDirectory)
+                        {
+                            await writer.WriteLineAsync("550 Directory not found");
+                            break;
+                        }
+                        _cwd = path;
+                        await writer.WriteLineAsync("250 Requested file action okay, completed");
                     }
-                    _cwd = parsed.Argument;
-                    await writer.WriteLineAsync("250 Requested file action okay, completed");
                     break;
                 case "CDUP":
                     _cwd = _cwd == "/" ? "/" : _cwd.Substring(0, _cwd.LastIndexOf('/'));
@@ -278,9 +282,15 @@ public sealed class FtpSession
                 case "SIZE":
                     {
                         var path = ResolvePath(parsed.Argument);
-                        if (!await _storage.ExistsAsync(path, ct))
+                        var entry = await _storage.GetEntryAsync(path, ct);
+                        if (entry is null)
                         {
                             await writer.WriteLineAsync("550 File not found");
+                            break;
+                        }
+                        if (entry.IsDirectory)
+                        {
+                            await writer.WriteLineAsync("550 Not a plain file");
                             break;
                         }
                         var size = await _storage.GetSizeAsync(path, ct);
