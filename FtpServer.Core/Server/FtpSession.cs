@@ -245,8 +245,16 @@ public sealed class FtpSession
                     }
                     break;
                 case "RNFR":
-                    _pendingRenameFrom = ResolvePath(parsed.Argument);
-                    await writer.WriteLineAsync("350 Requested file action pending further information");
+                    {
+                        var from = ResolvePath(parsed.Argument);
+                        if (!await _storage.ExistsAsync(from, ct))
+                        {
+                            await writer.WriteLineAsync("550 File not found");
+                            break;
+                        }
+                        _pendingRenameFrom = from;
+                        await writer.WriteLineAsync("350 Requested file action pending further information");
+                    }
                     break;
                 case "RNTO":
                     if (_pendingRenameFrom is null)
