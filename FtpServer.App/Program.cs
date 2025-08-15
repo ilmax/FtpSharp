@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +28,18 @@ builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.Plug
 builder.Services.AddSingleton<IStorageProviderFactory, FtpServer.Core.Plugins.PluginRegistry>();
 builder.Services.AddSingleton<FtpServerHost>();
 builder.Services.AddSingleton<PassivePortPool>();
+
+// OpenTelemetry metrics with Prometheus exporter
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(serviceName: "FtpServer", serviceVersion: "1.0.0"))
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddMeter(FtpServer.Core.Observability.Metrics.MeterName)
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusExporter();
+    });
 
 var portOption = new Option<int?>(name: "--port") { Description = "Control connection port", Arity = ArgumentArity.ZeroOrOne };
 var addressOption = new Option<string>(name: "--listen") { Description = "IP address to bind", Arity = ArgumentArity.ZeroOrOne };
@@ -76,6 +90,9 @@ if (builder.Configuration.GetValue("FtpServer:HealthEnabled", false))
     app.MapGet("/health", () => Results.Text("OK", "text/plain"));
     app.MapGet("/metrics-snapshot", () => Results.Json(new { status = "ok", ts = DateTimeOffset.UtcNow }));
 }
+
+// Prometheus scrape endpoint
+app.MapPrometheusScrapingEndpoint();
 
 // Start FTP server in background
 var ftp = app.Services.GetRequiredService<FtpServerHost>();
