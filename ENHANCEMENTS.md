@@ -40,7 +40,7 @@ This document tracks possible improvements and future features for the FTP serve
 ## Observability
 
 - ✅ Structured logs (basic) and metrics: sessions active, commands count and duration, transfer bytes, errors.
-- ✅ Health endpoint (HttpListener) with /health and /metrics-snapshot.
+- ✅ Health endpoint (ASP.NET Core) with /health and /metrics-snapshot.
 
 ## Tooling and DX
 
