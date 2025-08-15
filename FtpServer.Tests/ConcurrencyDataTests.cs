@@ -181,12 +181,67 @@ public class ConcurrencyDataTests
         await Task.WhenAll(serverTasks);
     }
 
+    [Fact]
+    public async Task Many_Short_PASV_Transfers_Do_Not_Exhaust_Ports()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var ep = (IPEndPoint)listener.LocalEndpoint;
+
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var storage = new InMemoryStorageProvider();
+        await storage.WriteAsync("/file.txt", OneChunk("x"), CancellationToken.None);
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions
+        {
+            PassivePortRangeStart = 50100,
+            PassivePortRangeEnd = 50110
+        });
+
+        var rnd = new Random(42);
+        var clients = Enumerable.Range(0, 10).Select(async i =>
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(ep.Address, ep.Port);
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+                using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+
+                _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+
+                await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+                using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
+                await writer.WriteLineAsync("RETR /file.txt"); _ = await reader.ReadLineAsync();
+                var buf = new byte[8]; _ = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+                dc.Close();
+                var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            }).ToArray();
+
+        var serverTasks = new List<Task>();
+        for (int i = 0; i < clients.Length; i++)
+        {
+            var serverClient = await listener.AcceptTcpClientAsync();
+            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            serverTasks.Add(session.RunAsync(cts.Token));
+        }
+
+        await Task.WhenAll(clients);
+        listener.Stop();
+        await Task.WhenAll(serverTasks);
+    }
+
     private static (string, int) ParsePasv(string s)
     {
+        if (string.IsNullOrWhiteSpace(s) || !s.Contains('(') || !s.Contains(')'))
+            throw new InvalidOperationException($"Unexpected PASV response: '{s}'");
         var start = s.IndexOf('(');
         var end = s.IndexOf(')');
-        var parts = s.Substring(start + 1, end - start - 1).Split(',');
-        var ip = string.Join('.', parts[..4]);
+        var inner = s.Substring(start + 1, end - start - 1);
+        var parts = inner.Split(',');
+        if (parts.Length < 6) throw new InvalidOperationException($"Unexpected PASV tuple: '{inner}'");
+        var ip = string.Join('.', parts[0], parts[1], parts[2], parts[3]);
         var port = int.Parse(parts[4]) * 256 + int.Parse(parts[5]);
         return (ip, port);
     }

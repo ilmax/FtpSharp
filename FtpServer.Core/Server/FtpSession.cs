@@ -86,18 +86,27 @@ public sealed class FtpSession : IFtpSessionContext
         var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, true);
 
         await writer.WriteLineAsync("220 Service ready");
-        while (!ct.IsCancellationRequested)
+        try
         {
-            var line = await reader.ReadLineAsync();
-            if (line is null) break;
-            var parsed = FtpCommandParser.Parse(line);
-            if (_handlers.TryGetValue(parsed.Command, out var handler))
+            while (!ct.IsCancellationRequested)
             {
-                await handler.HandleAsync(this, parsed, writer, ct);
-                if (ShouldQuit) return;
-                continue;
+                var line = await reader.ReadLineAsync();
+                if (line is null) break;
+                var parsed = FtpCommandParser.Parse(line);
+                if (_handlers.TryGetValue(parsed.Command, out var handler))
+                {
+                    await handler.HandleAsync(this, parsed, writer, ct);
+                    if (ShouldQuit) return;
+                    continue;
+                }
+                await writer.WriteLineAsync("502 Command not implemented");
             }
-            await writer.WriteLineAsync("502 Command not implemented");
+        }
+        finally
+        {
+            // Ensure any passive data listener is closed when the session ends
+            try { _pasvListener?.Stop(); } catch { }
+            _pasvListener = null;
         }
     }
 
