@@ -7,12 +7,14 @@ using Microsoft.Extensions.Options;
 using System.Runtime.InteropServices;
 using System.Globalization;
 
+using FtpServer.Core.Server.Commands;
+
 namespace FtpServer.Core.Server;
 
 /// <summary>
 /// Handles a single control connection session. Minimal MVP for iteration.
 /// </summary>
-public sealed class FtpSession
+public sealed class FtpSession : IFtpSessionContext
 {
     private readonly TcpClient _client;
     private readonly IAuthenticator _auth;
@@ -35,6 +37,17 @@ public sealed class FtpSession
         _options = options;
     }
 
+    private readonly Dictionary<string, IFtpCommandHandler> _handlers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["NOOP"] = new NoopHandler(),
+        ["SYST"] = new SystHandler(),
+        ["PWD"]  = new PwdHandler(),
+        ["CDUP"] = new CdupHandler(),
+        ["HELP"] = new HelpHandler(),
+    };
+
+    public string Cwd { get => _cwd; set => _cwd = value; }
+
     public async Task RunAsync(CancellationToken ct)
     {
         using var client = _client;
@@ -48,11 +61,13 @@ public sealed class FtpSession
             var line = await reader.ReadLineAsync();
             if (line is null) break;
         var parsed = FtpCommandParser.Parse(line);
+        if (_handlers.TryGetValue(parsed.Command, out var handler))
+        {
+            await handler.HandleAsync(this, parsed, writer, ct);
+            continue;
+        }
         switch (parsed.Command)
             {
-                case "NOOP":
-                    await writer.WriteLineAsync("200 NOOP ok");
-                    break;
                 case "USER":
             _pendingUser = parsed.Argument;
                     await writer.WriteLineAsync("331 User name okay, need password.");
@@ -67,9 +82,6 @@ public sealed class FtpSession
                     _isAuthenticated = result.Succeeded;
                     await writer.WriteLineAsync(result.Succeeded ? "230 User logged in, proceed." : "530 Not logged in.");
                     break;
-                case "SYST":
-                    await writer.WriteLineAsync("215 UNIX Type: L8");
-                    break;
                 case "FEAT":
                     await writer.WriteLineAsync("211-Features");
                     await writer.WriteLineAsync(" UTF8");
@@ -83,9 +95,6 @@ public sealed class FtpSession
                     await writer.WriteLineAsync(" TYPE A;I");
                     await writer.WriteLineAsync("211 End");
                     break;
-                case "PWD":
-                    await writer.WriteLineAsync($"257 \"{_cwd}\" is current directory");
-                    break;
                 case "CWD":
                     {
                         var path = ResolvePath(parsed.Argument);
@@ -98,11 +107,6 @@ public sealed class FtpSession
                         _cwd = path;
                         await writer.WriteLineAsync("250 Requested file action okay, completed");
                     }
-                    break;
-                case "CDUP":
-                    _cwd = _cwd == "/" ? "/" : _cwd.Substring(0, _cwd.LastIndexOf('/'));
-                    if (string.IsNullOrEmpty(_cwd)) _cwd = "/";
-                    await writer.WriteLineAsync("200 Directory changed to parent");
                     break;
                 case "TYPE":
                     var t = parsed.Argument.ToUpperInvariant();
@@ -375,11 +379,6 @@ public sealed class FtpSession
                     await writer.WriteLineAsync($" Current directory: {_cwd}");
                     await writer.WriteLineAsync(" Features: UTF8 PASV PORT EPSV EPRT TYPE SIZE NLST RNFR RNTO");
                     await writer.WriteLineAsync("211 End");
-                    break;
-                case "HELP":
-                    await writer.WriteLineAsync("214-The following commands are recognized.");
-                    await writer.WriteLineAsync(" USER PASS SYST FEAT PWD CWD CDUP TYPE PASV EPSV PORT EPRT LIST NLST RETR STOR DELE MKD RMD SIZE RNFR RNTO STAT HELP QUIT");
-                    await writer.WriteLineAsync("214 Help OK.");
                     break;
                 case "QUIT":
                     await writer.WriteLineAsync("221 Service closing control connection");
