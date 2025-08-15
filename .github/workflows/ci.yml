@@ -81,11 +81,19 @@ jobs:
   curl-integration:
     runs-on: ubuntu-latest
     needs: build-test
+    strategy:
+      fail-fast: false
+      matrix:
+        storage: [FileSystem, InMemory]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
       - name: Restore
         run: dotnet restore FtpServer.sln
       - name: Build
@@ -95,6 +103,7 @@ jobs:
           PORT: 2121
           PASV_START: 49152
           PASV_END: 49162
+          FTP_FTPSERVER__STORAGEPROVIDER: ${{ matrix.storage }}
         run: |
           chmod +x scripts/curl_integration_tests.sh
           scripts/curl_integration_tests.sh

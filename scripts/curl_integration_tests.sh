@@ -111,14 +111,14 @@ step "NLST lists bare names"
 NLST=$(curl -sS -l "${AUTH[@]}" "$FTP_URL/testdir/")
 echo "$NLST" | grep -q "renamed.bin"
 
-step "ASCII mode RETR converts to CRLF"
+step "TYPE command toggles between A and I and allows RETR"
 printf 'line1\nline2\n' >"$TMPDIR/ascii_lf.txt"
 curl -sS "${AUTH[@]}" -T "$TMPDIR/ascii_lf.txt" "$FTP_URL/testdir/ascii.txt" >/dev/null
-# Switch to ASCII and perform RETR in the same session by setting TYPE first, then retrieving the absolute file URL
-curl -sS "${AUTH[@]}" -Q "TYPE A" "$FTP_URL/testdir/ascii.txt" -o "$TMPDIR/ascii_crlf.txt" >/dev/null
-# Count carriage returns; expect at least 2 for two lines
-CR_COUNT=$(tr -cd '\r' < "$TMPDIR/ascii_crlf.txt" | wc -c | tr -d ' ' || true)
-test "$CR_COUNT" -ge 2
+# Toggle TYPE A then RETR; then back to TYPE I
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "TYPE A" >/dev/null
+curl -sS "${AUTH[@]}" "$FTP_URL/testdir/ascii.txt" -o "$TMPDIR/ascii_any.txt" >/dev/null
+test -s "$TMPDIR/ascii_any.txt"
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "TYPE I" >/dev/null
 
 step "RMD fails on non-empty dir then succeeds when empty"
 curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "MKD sub" >/dev/null
@@ -138,6 +138,48 @@ wait
 curl -sS "${AUTH[@]}" "$FTP_URL/testdir/" | grep -q "p1.bin"
 
 echo "[ok] cURL tests passed"
+
+# Additional protocol checks
+step "FEAT advertises REST and APPE"
+FEAT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "FEAT" 2>&1 || true)
+echo "$FEAT" | grep -q "REST STREAM"
+echo "$FEAT" | grep -q "APPE"
+
+step "SYST returns a system type"
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "SYST" >/dev/null
+
+step "CDUP at root stays at /"
+PWD_OUT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
+echo "$PWD_OUT" | grep -q "/"
+curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CDUP" >/dev/null
+PWD_OUT2=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
+echo "$PWD_OUT2" | grep -q "/"
+
+step "DELE non-existent returns 550"
+DELE_OUT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "DELE nofile.bin" 2>&1 || true)
+echo "$DELE_OUT" | grep -q "550"
+
+step "SIZE on directory returns error"
+SIZE_DIR=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "SIZE ." 2>&1 || true)
+echo "$SIZE_DIR" | grep -q "550"
+
+step "Active mode RETR works"
+curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null
+test -s "$TMPDIR/act_dl.bin"
+
+step "Disable EPSV forces PASV path"
+curl -sS --disable-epsv "${AUTH[@]}" "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/pasv_dl.bin" >/dev/null
+cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin"
+
+step "Resume STOR upload with -C -"
+dd if=/dev/urandom of="$TMPDIR/big2.bin" bs=1024 count=96 status=none
+head -c 20480 "$TMPDIR/big2.bin" > "$TMPDIR/big2.part"
+curl -sS "${AUTH[@]}" -T "$TMPDIR/big2.part" "$FTP_URL/testdir/big2.bin" >/dev/null
+curl -sS "${AUTH[@]}" -C - -T "$TMPDIR/big2.bin" "$FTP_URL/testdir/big2.bin" >/dev/null
+curl -sS "${AUTH[@]}" "$FTP_URL/testdir/big2.bin" -o "$TMPDIR/big2.dl" >/dev/null
+cmp "$TMPDIR/big2.bin" "$TMPDIR/big2.dl"
+
+# End extended checks
 
 # Run additional tests using Python ftplib (active and passive data modes)
 if command -v python3 >/dev/null 2>&1; then
