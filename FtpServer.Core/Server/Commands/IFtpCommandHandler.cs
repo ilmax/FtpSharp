@@ -26,4 +26,5 @@ public interface IFtpSessionContext
     string? PendingUser { get; set; }
     bool ShouldQuit { get; set; }
     string? PendingRenameFrom { get; set; }
+    System.Threading.Tasks.Task<System.IO.Stream> OpenDataStreamAsync(System.Threading.CancellationToken ct);
 }

@@ -56,6 +56,8 @@ public sealed class FtpSession : IFtpSessionContext
             ["DELE"] = new DeleHandler(_storage),
             ["RNFR"] = new RnfrHandler(_storage),
             ["RNTO"] = new RntoHandler(_storage),
+            ["LIST"] = new ListHandler(_storage),
+            ["NLST"] = new NlstHandler(_storage),
         };
     }
 
@@ -115,56 +117,7 @@ public sealed class FtpSession : IFtpSessionContext
                     _activeEndpoint = ep2;
                     await writer.WriteLineAsync("200 Command okay");
                     break;
-                case "LIST":
-                    if (!_isAuthenticated)
-                    {
-                        await writer.WriteLineAsync("530 Not logged in.");
-                        break;
-                    }
-                    await writer.WriteLineAsync("150 Opening data connection for LIST");
-                    try
-                    {
-                        using (var data = await OpenDataStreamAsync(ct))
-                        using (var dw = new StreamWriter(data, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
-                        {
-                            var entries = await _storage.ListAsync(_cwd, ct);
-                            foreach (var e in entries)
-                            {
-                                await dw.WriteLineAsync(FormatUnixListLine(e));
-                            }
-                        }
-                        await writer.WriteLineAsync("226 Closing data connection. Requested file action successful");
-                    }
-                    catch (Exception)
-                    {
-                        await writer.WriteLineAsync("425 Can't open data connection");
-                    }
-                    break;
-                case "NLST":
-                    if (!_isAuthenticated)
-                    {
-                        await writer.WriteLineAsync("530 Not logged in.");
-                        break;
-                    }
-                    await writer.WriteLineAsync("150 Opening data connection for NLST");
-                    try
-                    {
-                        using (var data2 = await OpenDataStreamAsync(ct))
-                        using (var dw2 = new StreamWriter(data2, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
-                        {
-                            var entries = await _storage.ListAsync(_cwd, ct);
-                            foreach (var e in entries)
-                            {
-                                await dw2.WriteLineAsync(e.Name);
-                            }
-                        }
-                        await writer.WriteLineAsync("226 NLST complete");
-                    }
-                    catch (Exception)
-                    {
-                        await writer.WriteLineAsync("425 Can't open data connection");
-                    }
-                    break;
+                
                 
                 case "RETR":
                     {
@@ -295,7 +248,7 @@ public sealed class FtpSession : IFtpSessionContext
         return _cwd.TrimEnd('/') + "/" + arg.TrimEnd('/');
     }
 
-    private async Task<NetworkStream> OpenDataStreamAsync(CancellationToken ct)
+    public async Task<Stream> OpenDataStreamAsync(CancellationToken ct)
     {
         if (_pasvListener is not null)
         {
