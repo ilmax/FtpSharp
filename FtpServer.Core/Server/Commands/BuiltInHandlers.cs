@@ -2,6 +2,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using FtpServer.Core.Protocol;
+using FtpServer.Core.Abstractions;
 
 namespace FtpServer.Core.Server.Commands;
 
@@ -45,6 +46,30 @@ internal sealed class TypeHandler : IFtpCommandHandler
         if (t == "I" || t.StartsWith("I ")) { context.TransferType = 'I'; return writer.WriteLineAsync("200 Type set to I"); }
         if (t == "A" || t.StartsWith("A ")) { context.TransferType = 'A'; return writer.WriteLineAsync("200 Type set to A"); }
         return writer.WriteLineAsync("504 Command not implemented for that parameter");
+    }
+}
+
+internal sealed class SizeHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public SizeHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "SIZE";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var path = context.ResolvePath(parsed.Argument);
+        var entry = await _storage.GetEntryAsync(path, ct);
+        if (entry is null)
+        {
+            await writer.WriteLineAsync("550 File not found");
+            return;
+        }
+        if (entry.IsDirectory)
+        {
+            await writer.WriteLineAsync("550 Not a plain file");
+            return;
+        }
+        var size = await _storage.GetSizeAsync(path, ct);
+        await writer.WriteLineAsync($"213 {size}");
     }
 }
 

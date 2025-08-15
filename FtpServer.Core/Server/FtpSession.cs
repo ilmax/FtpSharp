@@ -36,19 +36,21 @@ public sealed class FtpSession : IFtpSessionContext
         _auth = auth;
         _storage = storage;
         _options = options;
+        _handlers = new Dictionary<string, IFtpCommandHandler>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["NOOP"] = new NoopHandler(),
+            ["SYST"] = new SystHandler(),
+            ["PWD"]  = new PwdHandler(),
+            ["CDUP"] = new CdupHandler(),
+            ["HELP"] = new HelpHandler(),
+            ["FEAT"] = new FeatHandler(),
+            ["STAT"] = new StatHandler(),
+            ["TYPE"] = new TypeHandler(),
+            ["SIZE"] = new SizeHandler(_storage),
+        };
     }
 
-    private readonly Dictionary<string, IFtpCommandHandler> _handlers = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["NOOP"] = new NoopHandler(),
-        ["SYST"] = new SystHandler(),
-        ["PWD"]  = new PwdHandler(),
-        ["CDUP"] = new CdupHandler(),
-        ["HELP"] = new HelpHandler(),
-    ["FEAT"] = new FeatHandler(),
-    ["STAT"] = new StatHandler(),
-    ["TYPE"] = new TypeHandler(),
-    };
+    private readonly Dictionary<string, IFtpCommandHandler> _handlers;
 
     public string Cwd { get => _cwd; set => _cwd = value; }
 
@@ -338,24 +340,7 @@ public sealed class FtpSession : IFtpSessionContext
                         await writer.WriteLineAsync("425 Can't open data connection");
                     }
                     break;
-                case "SIZE":
-                    {
-                        var path = ResolvePath(parsed.Argument);
-                        var entry = await _storage.GetEntryAsync(path, ct);
-                        if (entry is null)
-                        {
-                            await writer.WriteLineAsync("550 File not found");
-                            break;
-                        }
-                        if (entry.IsDirectory)
-                        {
-                            await writer.WriteLineAsync("550 Not a plain file");
-                            break;
-                        }
-                        var size = await _storage.GetSizeAsync(path, ct);
-                        await writer.WriteLineAsync($"213 {size}");
-                    }
-                    break;
+                
                 case "RNFR":
                     {
                         var from = ResolvePath(parsed.Argument);
@@ -417,7 +402,7 @@ public sealed class FtpSession : IFtpSessionContext
     throw new IOException("No passive ports available");
     }
 
-    private string ResolvePath(string arg)
+    public string ResolvePath(string arg)
     {
         if (string.IsNullOrWhiteSpace(arg)) return _cwd;
         if (arg.StartsWith('/')) return arg.TrimEnd('/');
