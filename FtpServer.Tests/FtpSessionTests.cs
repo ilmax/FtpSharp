@@ -307,6 +307,8 @@ public class FtpSessionTests
             Assert.Contains("EPRT", features);
             Assert.Contains("SIZE", features);
             Assert.Contains("TYPE A;I", features);
+            Assert.Contains("REST STREAM", features);
+            Assert.Contains("APPE", features);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();

@@ -30,12 +30,37 @@ internal sealed class StorHandler : IFtpCommandHandler
         await writer.WriteLineAsync("150 Opening data connection for STOR");
         try
         {
+            await using var _lease = await FtpServer.Core.Server.PathLocks.AcquireWriteAsync(path, ct);
             using var storStream = await context.OpenDataStreamAsync(ct);
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
             async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
+                var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
+                (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
+                if (offset > 0)
+                {
+                    // Prepend existing up to offset to emulate truncate-then-append behavior
+                    var existing = await _storage.GetEntryAsync(path, token);
+                    if (existing is not null && existing.Length.HasValue)
+                    {
+                        var toKeep = (int)Math.Min(offset, existing.Length.Value);
+                        if (toKeep > 0)
+                        {
+                            var kept = new List<byte>(toKeep);
+                            int remaining = toKeep;
+                            await foreach (var chunk in _storage.ReadAsync(path, 8192, token))
+                            {
+                                var take = Math.Min(remaining, chunk.Length);
+                                kept.AddRange(chunk.Span[..take].ToArray());
+                                remaining -= take;
+                                if (remaining <= 0) break;
+                            }
+                            yield return kept.ToArray();
+                        }
+                    }
+                }
                 var buffer = new byte[8192];
                 int read;
                 while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)

@@ -35,12 +35,43 @@ internal sealed class RetrHandler : IFtpCommandHandler
         await writer.WriteLineAsync("150 Opening data connection for RETR");
         try
         {
+            await using var _lease = await FtpServer.Core.Server.PathLocks.AcquireReadAsync(path, ct);
             using var rs = await context.OpenDataStreamAsync(ct);
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
+            var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
+            (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
+            long skipped = 0;
             await foreach (var chunk in _storage.ReadAsync(path, 8192, token))
             {
+                if (offset > 0 && skipped + chunk.Length <= offset)
+                {
+                    skipped += chunk.Length;
+                    continue;
+                }
+                if (offset > 0 && skipped < offset)
+                {
+                    var sliceOffset = (int)(offset - skipped);
+                    var span = chunk.Span[sliceOffset..];
+                    var sliced = new ReadOnlyMemory<byte>(span.ToArray());
+                    skipped = offset;
+                    if (context.TransferType == 'A')
+                    {
+                        var textS = System.Text.Encoding.ASCII.GetString(sliced.Span);
+                        var dataS = System.Text.Encoding.ASCII.GetBytes(textS.Replace("\n", "\r\n"));
+                        await rs.WriteAsync(dataS, 0, dataS.Length, token);
+                        continue;
+                    }
+                    else
+                    {
+                        if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)sliced, out var segS))
+                            await rs.WriteAsync(segS.Array!, segS.Offset, segS.Count, token);
+                        else
+                            await rs.WriteAsync(sliced.ToArray(), token);
+                        continue;
+                    }
+                }
                 if (context.TransferType == 'A')
                 {
                     var text = System.Text.Encoding.ASCII.GetString(chunk.Span);

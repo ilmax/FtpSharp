@@ -6,3 +6,5 @@
 - 2025-08-15: Added mixed parallel RETR/STOR tests and introduced data open/transfer timeouts via options. Created ENHANCEMENTS.md to track future features.
 - 2025-08-15: Implemented control channel read timeout (idle command timeout) via ControlReadTimeoutMs option and applied in FtpSession loop; added a test to validate session closure when idle.
 - 2025-08-15: Updated FEAT handler comments to reflect configurable timeouts (features list unchanged).
+- 2025-08-15: Introduced per-path reader/writer locks to serialize writers and allow concurrent readers. Applied to RETR/STOR/APPE handlers.
+- 2025-08-15: Implemented REST and APPE commands. RETR honors REST offset; STOR truncates to offset then writes; APPE appends, honoring REST to truncate before append. Updated FEAT and tests.

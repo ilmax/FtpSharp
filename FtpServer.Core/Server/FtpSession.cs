@@ -28,6 +28,8 @@ public sealed class FtpSession : IFtpSessionContext
     private char _type = 'I'; // I=binary, A=ascii
     public char TransferType { get => _type; set => _type = value; }
     private System.Net.IPEndPoint? _activeEndpoint;
+    private long _restartOffset;
+    internal long RestartOffset { get => _restartOffset; set => _restartOffset = value; }
 
     public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options)
     {
@@ -63,6 +65,8 @@ public sealed class FtpSession : IFtpSessionContext
             ["EPRT"] = new EprtHandler(),
             ["RETR"] = new RetrHandler(_storage, _options),
             ["STOR"] = new StorHandler(_storage, _options),
+            ["REST"] = new RestHandler(this),
+            ["APPE"] = new AppeHandler(_storage, _options, this),
             ["MODE"] = new ModeHandler(),
             ["STRU"] = new StruHandler(),
             ["ALLO"] = new AlloHandler(),
