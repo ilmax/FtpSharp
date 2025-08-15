@@ -56,7 +56,7 @@ public sealed class FtpServerHost : IAsyncDisposable
                     continue;
                 }
                 var opts = _options.Value;
-                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider));
+                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options);
                 var task = session.RunAsync(ct);
                 _sessions.Add(task);
                 _ = task.ContinueWith(t => _sessions.Remove(t), TaskScheduler.Default);
