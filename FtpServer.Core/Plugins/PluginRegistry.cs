@@ -23,6 +23,7 @@ public sealed class PluginRegistry : IAuthenticatorFactory, IStorageProviderFact
         => name switch
         {
             "InMemory" => _sp.GetRequiredService<FtpServer.Core.InMemory.InMemoryStorageProvider>(),
+            "FileSystem" => _sp.GetRequiredService<FtpServer.Core.FileSystem.FileSystemStorageProvider>(),
             _ => throw new NotSupportedException($"Unknown storage provider '{name}'")
         };
 }

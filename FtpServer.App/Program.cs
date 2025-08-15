@@ -1,6 +1,7 @@
 ﻿using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
 using FtpServer.Core.InMemory;
+using FtpServer.Core.FileSystem;
 using FtpServer.Core.Server;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ builder.Services.AddOptions<FtpServerOptions>()
 // Register plugins and registry for name-based selection
 builder.Services.AddSingleton<InMemoryAuthenticator>();
 builder.Services.AddSingleton<InMemoryStorageProvider>();
+builder.Services.AddSingleton<FileSystemStorageProvider>();
 builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.PluginRegistry>();
 builder.Services.AddSingleton<IStorageProviderFactory, FtpServer.Core.Plugins.PluginRegistry>();
 
@@ -34,7 +36,7 @@ var maxSessionsOption = new Option<int?>(name: "--max-sessions", description: "M
 var passiveStartOption = new Option<int?>(name: "--pasv-start", description: "Passive data port range start (default 50000)") { Arity = ArgumentArity.ZeroOrOne };
 var passiveEndOption = new Option<int?>(name: "--pasv-end", description: "Passive data port range end (default 50100)") { Arity = ArgumentArity.ZeroOrOne };
 var authOption = new Option<string>(name: "--auth", description: "Authenticator plugin name (e.g., InMemory)") { Arity = ArgumentArity.ZeroOrOne };
-var storageOption = new Option<string>(name: "--storage", description: "Storage provider plugin name (e.g., InMemory)") { Arity = ArgumentArity.ZeroOrOne };
+var storageOption = new Option<string>(name: "--storage", description: "Storage provider plugin name (e.g., InMemory, FileSystem)") { Arity = ArgumentArity.ZeroOrOne };
 
 var root = new RootCommand("Minimal FTP Server with plugins")
 {

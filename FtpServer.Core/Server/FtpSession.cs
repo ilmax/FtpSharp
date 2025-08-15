@@ -78,6 +78,8 @@ public sealed class FtpSession
                     await writer.WriteLineAsync(" PORT");
                     await writer.WriteLineAsync(" EPRT");
                     await writer.WriteLineAsync(" SIZE");
+                    await writer.WriteLineAsync(" NLST");
+                    await writer.WriteLineAsync(" RNFR RNTO");
                     await writer.WriteLineAsync(" TYPE A;I");
                     await writer.WriteLineAsync("211 End");
                     break;
@@ -259,7 +261,7 @@ public sealed class FtpSession
                 case "STAT":
                     await writer.WriteLineAsync("211-FTP Server status");
                     await writer.WriteLineAsync($" Current directory: {_cwd}");
-                    await writer.WriteLineAsync(" Features: UTF8 PASV PORT EPSV EPRT TYPE");
+                    await writer.WriteLineAsync(" Features: UTF8 PASV PORT EPSV EPRT TYPE SIZE NLST RNFR RNTO");
                     await writer.WriteLineAsync("211 End");
                     break;
                 case "HELP":
