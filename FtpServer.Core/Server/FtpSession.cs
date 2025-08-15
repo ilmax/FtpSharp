@@ -5,6 +5,7 @@ using FtpServer.Core.Protocol;
 using FtpServer.Core.Configuration;
 using Microsoft.Extensions.Options;
 using System.Runtime.InteropServices;
+using System.Globalization;
 
 namespace FtpServer.Core.Server;
 
@@ -23,6 +24,7 @@ public sealed class FtpSession
     private string _cwd = "/";
     private TcpListener? _pasvListener;
     private char _type = 'I'; // I=binary, A=ascii
+    private System.Net.IPEndPoint? _activeEndpoint;
 
     public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options)
     {
@@ -64,6 +66,14 @@ public sealed class FtpSession
                 case "SYST":
                     await writer.WriteLineAsync("215 UNIX Type: L8");
                     break;
+                case "FEAT":
+                    await writer.WriteLineAsync("211-Features");
+                    await writer.WriteLineAsync(" UTF8");
+                    await writer.WriteLineAsync(" PASV");
+                    await writer.WriteLineAsync(" PORT");
+                    await writer.WriteLineAsync(" TYPE A;I");
+                    await writer.WriteLineAsync("211 End");
+                    break;
                 case "PWD":
                     await writer.WriteLineAsync($"257 \"{_cwd}\" is current directory");
                     break;
@@ -87,30 +97,31 @@ public sealed class FtpSession
                     var p1 = pe.Port / 256; var p2 = pe.Port % 256;
                     await writer.WriteLineAsync($"227 Entering Passive Mode ({pe.IpAddress.Replace('.', ',')},{p1},{p2})");
                     break;
+                case "PORT":
+                    if (!TryParsePort(parsed.Argument, out var ep))
+                    {
+                        await writer.WriteLineAsync("501 Syntax error in parameters or arguments");
+                        break;
+                    }
+                    _activeEndpoint = ep;
+                    await writer.WriteLineAsync("200 Command okay");
+                    break;
                 case "LIST":
                     if (!_isAuthenticated)
                     {
                         await writer.WriteLineAsync("530 Not logged in.");
                         break;
                     }
-                    if (_pasvListener is null)
-                    {
-                        await writer.WriteLineAsync("425 Use PASV first.");
-                        break;
-                    }
                     await writer.WriteLineAsync("150 Opening data connection for LIST");
-                    using (var dataClient = await _pasvListener.AcceptTcpClientAsync(ct))
-                    using (var data = dataClient.GetStream())
+                    using (var data = await OpenDataStreamAsync(ct))
                     using (var dw = new StreamWriter(data, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
                     {
                         var entries = await _storage.ListAsync(_cwd, ct);
                         foreach (var e in entries)
                         {
-                            await dw.WriteLineAsync(e.Name);
+                            await dw.WriteLineAsync(FormatUnixListLine(e));
                         }
                     }
-                    _pasvListener.Stop();
-                    _pasvListener = null;
                     await writer.WriteLineAsync("226 Closing data connection. Requested file action successful");
                     break;
                 case "MKD":
@@ -126,10 +137,8 @@ public sealed class FtpSession
                     await writer.WriteLineAsync("250 Requested file action okay, completed");
                     break;
                 case "RETR":
-                    if (_pasvListener is null) { await writer.WriteLineAsync("425 Use PASV first."); break; }
                     await writer.WriteLineAsync("150 Opening data connection for RETR");
-                    using (var retrClient = await _pasvListener.AcceptTcpClientAsync(ct))
-                    using (var rs = retrClient.GetStream())
+                    using (var rs = await OpenDataStreamAsync(ct))
                     using (var bw = new BinaryWriter(rs, Encoding.ASCII, leaveOpen: true))
                     {
                         await foreach (var chunk in _storage.ReadAsync(ResolvePath(parsed.Argument), 8192, ct))
@@ -150,21 +159,17 @@ public sealed class FtpSession
                             }
                         }
                     }
-                    _pasvListener.Stop();
-                    _pasvListener = null;
                     await writer.WriteLineAsync("226 Transfer complete");
                     break;
                 case "STOR":
-                    if (_pasvListener is null) { await writer.WriteLineAsync("425 Use PASV first."); break; }
                     await writer.WriteLineAsync("150 Opening data connection for STOR");
-                    using (var storClient = await _pasvListener.AcceptTcpClientAsync(ct))
+            using (var storStream = await OpenDataStreamAsync(ct))
                     {
-                        var ns = storClient.GetStream();
                         async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
                         {
                             var buffer = new byte[8192];
                             int read;
-                            while ((read = await ns.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
                             {
                                 if (_type == 'A')
                                 {
@@ -180,8 +185,6 @@ public sealed class FtpSession
                         }
                         await _storage.WriteAsync(ResolvePath(parsed.Argument), ReadStream(ct), ct);
                     }
-                    _pasvListener.Stop();
-                    _pasvListener = null;
                     await writer.WriteLineAsync("226 Transfer complete");
                     break;
                 case "QUIT":
@@ -223,6 +226,52 @@ public sealed class FtpSession
         if (arg.StartsWith('/')) return arg.TrimEnd('/');
         if (_cwd == "/") return "/" + arg.TrimEnd('/');
         return _cwd.TrimEnd('/') + "/" + arg.TrimEnd('/');
+    }
+
+    private async Task<NetworkStream> OpenDataStreamAsync(CancellationToken ct)
+    {
+        if (_pasvListener is not null)
+        {
+            var client = await _pasvListener.AcceptTcpClientAsync(ct);
+            _pasvListener.Stop();
+            _pasvListener = null;
+            return client.GetStream();
+        }
+        if (_activeEndpoint is not null)
+        {
+            var client = new TcpClient();
+            await client.ConnectAsync(_activeEndpoint, ct);
+            _activeEndpoint = null;
+            return client.GetStream();
+        }
+        throw new IOException("425 Can't open data connection");
+    }
+
+    private static bool TryParsePort(string arg, out System.Net.IPEndPoint? ep)
+    {
+        ep = null;
+        // Format: h1,h2,h3,h4,p1,p2
+        var parts = arg.Split(',');
+        if (parts.Length != 6) return false;
+        if (!byte.TryParse(parts[0], out var h1) || !byte.TryParse(parts[1], out var h2) ||
+            !byte.TryParse(parts[2], out var h3) || !byte.TryParse(parts[3], out var h4) ||
+            !byte.TryParse(parts[4], out var p1) || !byte.TryParse(parts[5], out var p2)) return false;
+        var addr = new System.Net.IPAddress(new byte[] { h1, h2, h3, h4 });
+        var port = p1 * 256 + p2;
+        ep = new System.Net.IPEndPoint(addr, port);
+        return true;
+    }
+
+    private static string FormatUnixListLine(FileSystemEntry e)
+    {
+        var perms = e.IsDirectory ? 'd' : '-';
+        var rights = "rwxr-xr-x"; // placeholder
+        var links = 1;
+        var owner = "owner";
+        var group = "group";
+        var size = e.Length ?? 0;
+        var date = DateTimeOffset.Now.ToString("MMM dd HH:mm", CultureInfo.InvariantCulture);
+        return $"{perms}{rights} {links,3} {owner,5} {group,5} {size,8} {date} {e.Name}";
     }
 
     // Parsing moved to FtpCommandParser
