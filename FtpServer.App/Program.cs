@@ -1,25 +1,25 @@
-﻿using FtpServer.Core.Abstractions;
+﻿using System.CommandLine;
+using System.CommandLine.Binding;
+using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
-using FtpServer.Core.InMemory;
 using FtpServer.Core.FileSystem;
+using FtpServer.Core.InMemory;
 using FtpServer.Core.Server;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.CommandLine;
-using System.CommandLine.Binding;
 
 // Minimal generic host bootstrapping the FTP server. Reads configuration from env and command line.
 var builder = Host.CreateApplicationBuilder([]);
 
 // Read from environment variables (prefix FTP_) and command-line switches (--FtpServer:Port=2121 etc)
 builder.Configuration
-	.AddEnvironmentVariables("FTP_");
+    .AddEnvironmentVariables("FTP_");
 
 builder.Services.AddOptions<FtpServerOptions>()
-	.Bind(builder.Configuration.GetSection("FtpServer"))
-	.ValidateDataAnnotations();
+    .Bind(builder.Configuration.GetSection("FtpServer"))
+    .ValidateDataAnnotations();
 
 // Register plugins and registry for name-based selection
 builder.Services.AddSingleton<InMemoryAuthenticator>();
@@ -40,28 +40,28 @@ var storageOption = new Option<string>(name: "--storage", description: "Storage 
 
 var root = new RootCommand("Minimal FTP Server with plugins")
 {
-	portOption, addressOption, maxSessionsOption, passiveStartOption, passiveEndOption, authOption, storageOption
+    portOption, addressOption, maxSessionsOption, passiveStartOption, passiveEndOption, authOption, storageOption
 };
 
 root.SetHandler<int?, string?, int?, int?, int?, string?, string?>(async (port, address, maxSessions, pasvStart, pasvEnd, auth, storage) =>
 {
-	if (port is not null) builder.Configuration["FtpServer:Port"] = port.Value.ToString();
-	if (address is not null) builder.Configuration["FtpServer:ListenAddress"] = address;
-	if (maxSessions is not null) builder.Configuration["FtpServer:MaxSessions"] = maxSessions.Value.ToString();
-	if (pasvStart is not null) builder.Configuration["FtpServer:PassivePortRangeStart"] = pasvStart.Value.ToString();
-	if (pasvEnd is not null) builder.Configuration["FtpServer:PassivePortRangeEnd"] = pasvEnd.Value.ToString();
-	if (auth is not null) builder.Configuration["FtpServer:Authenticator"] = auth;
-	if (storage is not null) builder.Configuration["FtpServer:StorageProvider"] = storage;
+    if (port is not null) builder.Configuration["FtpServer:Port"] = port.Value.ToString();
+    if (address is not null) builder.Configuration["FtpServer:ListenAddress"] = address;
+    if (maxSessions is not null) builder.Configuration["FtpServer:MaxSessions"] = maxSessions.Value.ToString();
+    if (pasvStart is not null) builder.Configuration["FtpServer:PassivePortRangeStart"] = pasvStart.Value.ToString();
+    if (pasvEnd is not null) builder.Configuration["FtpServer:PassivePortRangeEnd"] = pasvEnd.Value.ToString();
+    if (auth is not null) builder.Configuration["FtpServer:Authenticator"] = auth;
+    if (storage is not null) builder.Configuration["FtpServer:StorageProvider"] = storage;
 
-	using var host = builder.Build();
-	var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("App");
-	var server = host.Services.GetRequiredService<FtpServerHost>();
-	var cts = new CancellationTokenSource();
-	Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+    using var host = builder.Build();
+    var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("App");
+    var server = host.Services.GetRequiredService<FtpServerHost>();
+    var cts = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 
-	await server.StartAsync(cts.Token);
-	logger.LogInformation("Press Ctrl+C to stop.");
-	try { await Task.Delay(Timeout.Infinite, cts.Token); } catch (OperationCanceledException) { }
+    await server.StartAsync(cts.Token);
+    logger.LogInformation("Press Ctrl+C to stop.");
+    try { await Task.Delay(Timeout.Infinite, cts.Token); } catch (OperationCanceledException) { }
 }, portOption, addressOption, maxSessionsOption, passiveStartOption, passiveEndOption, authOption, storageOption);
 
 await root.InvokeAsync(args);

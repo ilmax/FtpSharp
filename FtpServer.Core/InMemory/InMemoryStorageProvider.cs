@@ -20,7 +20,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
 
     public InMemoryStorageProvider()
     {
-        _nodes.TryAdd("/", new DirNode(new())) ;
+        _nodes.TryAdd("/", new DirNode(new()));
     }
 
     public Task<bool> ExistsAsync(string path, CancellationToken ct)

@@ -1,12 +1,12 @@
 using System.Net.Sockets;
 using System.Text;
 using FtpServer.Core.Abstractions;
-using FtpServer.Core.Protocol;
 using FtpServer.Core.Configuration;
-using Microsoft.Extensions.Options;
+using FtpServer.Core.Protocol;
 // Unused imports removed after handler extraction
 
 using FtpServer.Core.Server.Commands;
+using Microsoft.Extensions.Options;
 
 namespace FtpServer.Core.Server;
 
@@ -39,7 +39,7 @@ public sealed class FtpSession : IFtpSessionContext
         {
             ["NOOP"] = new NoopHandler(),
             ["SYST"] = new SystHandler(),
-            ["PWD"]  = new PwdHandler(),
+            ["PWD"] = new PwdHandler(),
             ["CDUP"] = new CdupHandler(),
             ["HELP"] = new HelpHandler(),
             ["FEAT"] = new FeatHandler(),
@@ -49,9 +49,9 @@ public sealed class FtpSession : IFtpSessionContext
             ["QUIT"] = new QuitHandler(),
             ["USER"] = new UserHandler(),
             ["PASS"] = new PassHandler(_auth),
-            ["CWD"]  = new CwdHandler(_storage),
-            ["MKD"]  = new MkdHandler(_storage),
-            ["RMD"]  = new RmdHandler(_storage),
+            ["CWD"] = new CwdHandler(_storage),
+            ["MKD"] = new MkdHandler(_storage),
+            ["RMD"] = new RmdHandler(_storage),
             ["DELE"] = new DeleHandler(_storage),
             ["RNFR"] = new RnfrHandler(_storage),
             ["RNTO"] = new RntoHandler(_storage),
@@ -63,6 +63,9 @@ public sealed class FtpSession : IFtpSessionContext
             ["EPRT"] = new EprtHandler(),
             ["RETR"] = new RetrHandler(_storage),
             ["STOR"] = new StorHandler(_storage),
+            ["MODE"] = new ModeHandler(),
+            ["STRU"] = new StruHandler(),
+            ["ALLO"] = new AlloHandler(),
         };
     }
 
@@ -87,14 +90,14 @@ public sealed class FtpSession : IFtpSessionContext
         {
             var line = await reader.ReadLineAsync();
             if (line is null) break;
-        var parsed = FtpCommandParser.Parse(line);
-    if (_handlers.TryGetValue(parsed.Command, out var handler))
-        {
-            await handler.HandleAsync(this, parsed, writer, ct);
-            if (ShouldQuit) return;
-            continue;
-        }
-    await writer.WriteLineAsync("502 Command not implemented");
+            var parsed = FtpCommandParser.Parse(line);
+            if (_handlers.TryGetValue(parsed.Command, out var handler))
+            {
+                await handler.HandleAsync(this, parsed, writer, ct);
+                if (ShouldQuit) return;
+                continue;
+            }
+            await writer.WriteLineAsync("502 Command not implemented");
         }
     }
 
@@ -118,7 +121,7 @@ public sealed class FtpSession : IFtpSessionContext
                 // try next
             }
         }
-    throw new IOException("No passive ports available");
+        throw new IOException("No passive ports available");
     }
 
     public string ResolvePath(string arg)

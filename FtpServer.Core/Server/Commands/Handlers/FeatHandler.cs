@@ -20,6 +20,8 @@ internal sealed class FeatHandler : IFtpCommandHandler
         await writer.WriteLineAsync(" NLST");
         await writer.WriteLineAsync(" RNFR RNTO");
         await writer.WriteLineAsync(" TYPE A;I");
+        await writer.WriteLineAsync(" MODE S");
+        await writer.WriteLineAsync(" STRU F");
         await writer.WriteLineAsync("211 End");
     }
 }

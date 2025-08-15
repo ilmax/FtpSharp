@@ -1,8 +1,8 @@
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FtpServer.Core.Abstractions;
-using System.Text;
 using FtpServer.Core.Protocol;
 
 namespace FtpServer.Core.Server.Commands;

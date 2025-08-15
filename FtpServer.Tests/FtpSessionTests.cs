@@ -40,8 +40,8 @@ public class FtpSessionTests
         var auth = new InMemoryAuthenticator();
         auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
-    var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
-    var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }

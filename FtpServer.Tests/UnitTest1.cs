@@ -1,10 +1,10 @@
 ﻿using System.Net.Sockets;
 using System.Text;
-using FtpServer.Core.InMemory;
-using FtpServer.Core.Server;
-using FtpServer.Core.Protocol;
-using FtpServer.Core.Server.Commands;
 using FtpServer.Core.Abstractions;
+using FtpServer.Core.InMemory;
+using FtpServer.Core.Protocol;
+using FtpServer.Core.Server;
+using FtpServer.Core.Server.Commands;
 
 namespace FtpServer.Tests;
 
@@ -94,6 +94,47 @@ public class HandlerTests
         using var w = new StreamWriter(new MemoryStream()) { AutoFlush = true };
         await h.HandleAsync(ctx, new ParsedCommand("TYPE", "A"), w, CancellationToken.None);
         Assert.Equal('A', ctx.TransferType);
+    }
+
+    [Fact]
+    public async Task ModeHandler_Accepts_S_Only()
+    {
+        var h = new FtpServer.Core.Server.Commands.ModeHandler();
+        var ctx = new FakeContext();
+        using var ms = new MemoryStream();
+        using var w = new StreamWriter(ms) { AutoFlush = true };
+        await h.HandleAsync(ctx, new ParsedCommand("MODE", "S"), w, CancellationToken.None);
+        await h.HandleAsync(ctx, new ParsedCommand("MODE", "B"), w, CancellationToken.None);
+        var output = Encoding.ASCII.GetString(ms.ToArray());
+        Assert.Contains("200", output);
+        Assert.Contains("504", output);
+    }
+
+    [Fact]
+    public async Task StruHandler_Accepts_F_Only()
+    {
+        var h = new FtpServer.Core.Server.Commands.StruHandler();
+        var ctx = new FakeContext();
+        using var ms = new MemoryStream();
+        using var w = new StreamWriter(ms) { AutoFlush = true };
+        await h.HandleAsync(ctx, new ParsedCommand("STRU", "F"), w, CancellationToken.None);
+        await h.HandleAsync(ctx, new ParsedCommand("STRU", "R"), w, CancellationToken.None);
+        var output = Encoding.ASCII.GetString(ms.ToArray());
+        Assert.Contains("200", output);
+        Assert.Contains("504", output);
+    }
+
+    [Fact]
+    public async Task AlloHandler_Always_202()
+    {
+        var h = new FtpServer.Core.Server.Commands.AlloHandler();
+        var ctx = new FakeContext();
+        using var ms = new MemoryStream();
+        using var w = new StreamWriter(ms) { AutoFlush = true };
+        await h.HandleAsync(ctx, new ParsedCommand("ALLO", "123"), w, CancellationToken.None);
+        await h.HandleAsync(ctx, new ParsedCommand("ALLO", string.Empty), w, CancellationToken.None);
+        var output = Encoding.ASCII.GetString(ms.ToArray());
+        Assert.Contains("202", output);
     }
 
     [Fact]
