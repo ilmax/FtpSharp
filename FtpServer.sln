@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FtpServer.Core", "FtpServer.Core\FtpServer.Core.csproj", "{93693CC3-8EDB-4470-973E-6CAD77E7F208}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FtpServer.App", "FtpServer.App\FtpServer.App.csproj", "{013EA345-FB7F-4274-A329-57A427F42379}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FtpServer.Tests", "FtpServer.Tests\FtpServer.Tests.csproj", "{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{93693CC3-8EDB-4470-973E-6CAD77E7F208}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93693CC3-8EDB-4470-973E-6CAD77E7F208}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93693CC3-8EDB-4470-973E-6CAD77E7F208}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93693CC3-8EDB-4470-973E-6CAD77E7F208}.Release|Any CPU.Build.0 = Release|Any CPU
+		{013EA345-FB7F-4274-A329-57A427F42379}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{013EA345-FB7F-4274-A329-57A427F42379}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{013EA345-FB7F-4274-A329-57A427F42379}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{013EA345-FB7F-4274-A329-57A427F42379}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
