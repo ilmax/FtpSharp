@@ -20,20 +20,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install GitVersion
-        uses: GitTools/actions/gitversion/setup@v3
-        with:
-        run: dotnet test --no-build -v minimal --logger "trx;LogFileName=test_results.trx"
-      - name: Upload test results
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: '**/TestResults/*.trx'
+        uses: GitTools/actions/gitversion/setup@v4.1.0
       - name: Determine Version
         id: gitversion
-        uses: GitTools/actions/gitversion/execute@v3
-        with:
-          useConfigFile: true
+        uses: GitTools/actions/gitversion/execute@v4.1.0
       - name: Echo version
         run: echo "SemVer=${{ steps.gitversion.outputs.semVer }}"
       - uses: actions/setup-dotnet@v4
@@ -50,7 +40,10 @@ jobs:
         with:
           reports: 'FtpServer.Tests/TestResults/**/coverage.cobertura.xml'
           targetdir: 'coverage-report'
-          reporttypes: 'TextSummary'
+          reporttypes: 'MarkdownSummaryGithub;Cobertura;TextSummary'
+      - name: Publish coverage in build summary
+        run: cat coverage-report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY # Adjust path and filename if necessary
+        shell: bash
       - name: Enforce coverage >= 80%
         run: |
           PCT=$(grep -o 'Line coverage: [0-9]*\.[0-9]*' coverage-report/Summary.txt | awk '{print $3}')
@@ -69,14 +62,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
+      - name: Compute lowercase image repository
+        shell: bash
+        run: echo "IMAGE_REPO_LC=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
-            ghcr.io/${{ github.repository }}:${{ needs.build-test.outputs.semver }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ env.IMAGE_REPO_LC }}:${{ needs.build-test.outputs.semver }}
+            ${{ env.IMAGE_REPO_LC }}:latest
 
   curl-integration:
     runs-on: ubuntu-latest
@@ -104,6 +100,7 @@ jobs:
           PASV_START: 49152
           PASV_END: 49162
           FTP_FTPSERVER__STORAGEPROVIDER: ${{ matrix.storage }}
+          DOTNET_CONFIGURATION: Release
         run: |
           chmod +x scripts/curl_integration_tests.sh
           scripts/curl_integration_tests.sh

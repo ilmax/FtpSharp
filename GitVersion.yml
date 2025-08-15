@@ -1,7 +1,6 @@
 mode: ContinuousDeployment
 branches:
   main:
-    regex: ^main$
-    tag: ''
+    regex: ^main$    
 ignore:
   sha: []
