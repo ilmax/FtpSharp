@@ -14,16 +14,16 @@ public sealed class FtpServerHost : IAsyncDisposable
 {
     private readonly IOptions<FtpServerOptions> _options;
     private readonly ILogger<FtpServerHost> _logger;
-    private readonly Func<IAuthenticator> _authFactory;
-    private readonly Func<IStorageProvider> _storageFactory;
+    private readonly IAuthenticatorFactory _authFactory;
+    private readonly IStorageProviderFactory _storageFactory;
     private TcpListener? _listener;
     private readonly HashSet<Task> _sessions = new();
 
     public FtpServerHost(
         IOptions<FtpServerOptions> options,
         ILogger<FtpServerHost> logger,
-        Func<IAuthenticator> authFactory,
-        Func<IStorageProvider> storageFactory)
+    IAuthenticatorFactory authFactory,
+    IStorageProviderFactory storageFactory)
     {
         _options = options;
         _logger = logger;
@@ -55,7 +55,8 @@ public sealed class FtpServerHost : IAsyncDisposable
                     client.Close();
                     continue;
                 }
-                var session = new FtpSession(client, _authFactory(), _storageFactory());
+                var opts = _options.Value;
+                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider));
                 var task = session.RunAsync(ct);
                 _sessions.Add(task);
                 _ = task.ContinueWith(t => _sessions.Remove(t), TaskScheduler.Default);

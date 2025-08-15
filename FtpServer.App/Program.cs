@@ -19,11 +19,11 @@ builder.Services.AddOptions<FtpServerOptions>()
 	.Bind(builder.Configuration.GetSection("FtpServer"))
 	.ValidateDataAnnotations();
 
-// Register plugin factories; for now wire InMemory as default. Later, select by name from options.
+// Register plugins and registry for name-based selection
 builder.Services.AddSingleton<InMemoryAuthenticator>();
 builder.Services.AddSingleton<InMemoryStorageProvider>();
-builder.Services.AddSingleton<Func<IAuthenticator>>(sp => () => sp.GetRequiredService<InMemoryAuthenticator>());
-builder.Services.AddSingleton<Func<IStorageProvider>>(sp => () => sp.GetRequiredService<InMemoryStorageProvider>());
+builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.PluginRegistry>();
+builder.Services.AddSingleton<IStorageProviderFactory, FtpServer.Core.Plugins.PluginRegistry>();
 
 builder.Services.AddSingleton<FtpServerHost>();
 
