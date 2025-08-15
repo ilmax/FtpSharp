@@ -140,16 +140,23 @@ public sealed class FtpSession
                         break;
                     }
                     await writer.WriteLineAsync("150 Opening data connection for LIST");
-                    using (var data = await OpenDataStreamAsync(ct))
-                    using (var dw = new StreamWriter(data, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
+                    try
                     {
-                        var entries = await _storage.ListAsync(_cwd, ct);
-                        foreach (var e in entries)
+                        using (var data = await OpenDataStreamAsync(ct))
+                        using (var dw = new StreamWriter(data, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
                         {
-                            await dw.WriteLineAsync(FormatUnixListLine(e));
+                            var entries = await _storage.ListAsync(_cwd, ct);
+                            foreach (var e in entries)
+                            {
+                                await dw.WriteLineAsync(FormatUnixListLine(e));
+                            }
                         }
+                        await writer.WriteLineAsync("226 Closing data connection. Requested file action successful");
                     }
-                    await writer.WriteLineAsync("226 Closing data connection. Requested file action successful");
+                    catch (Exception)
+                    {
+                        await writer.WriteLineAsync("425 Can't open data connection");
+                    }
                     break;
                 case "NLST":
                     if (!_isAuthenticated)
@@ -158,16 +165,23 @@ public sealed class FtpSession
                         break;
                     }
                     await writer.WriteLineAsync("150 Opening data connection for NLST");
-                    using (var data2 = await OpenDataStreamAsync(ct))
-                    using (var dw2 = new StreamWriter(data2, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
+                    try
                     {
-                        var entries = await _storage.ListAsync(_cwd, ct);
-                        foreach (var e in entries)
+                        using (var data2 = await OpenDataStreamAsync(ct))
+                        using (var dw2 = new StreamWriter(data2, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
                         {
-                            await dw2.WriteLineAsync(e.Name);
+                            var entries = await _storage.ListAsync(_cwd, ct);
+                            foreach (var e in entries)
+                            {
+                                await dw2.WriteLineAsync(e.Name);
+                            }
                         }
+                        await writer.WriteLineAsync("226 NLST complete");
                     }
-                    await writer.WriteLineAsync("226 NLST complete");
+                    catch (Exception)
+                    {
+                        await writer.WriteLineAsync("425 Can't open data connection");
+                    }
                     break;
                 case "MKD":
                     await _storage.CreateDirectoryAsync(ResolvePath(parsed.Argument), ct);
@@ -183,54 +197,68 @@ public sealed class FtpSession
                     break;
                 case "RETR":
                     await writer.WriteLineAsync("150 Opening data connection for RETR");
-                    using (var rs = await OpenDataStreamAsync(ct))
-                    using (var bw = new BinaryWriter(rs, Encoding.ASCII, leaveOpen: true))
+                    try
                     {
-                        await foreach (var chunk in _storage.ReadAsync(ResolvePath(parsed.Argument), 8192, ct))
+                        using (var rs = await OpenDataStreamAsync(ct))
+                        using (var bw = new BinaryWriter(rs, Encoding.ASCII, leaveOpen: true))
                         {
-                            if (_type == 'A')
-                            {
-                                // naive ASCII: convert \n to \r\n
-                                var text = Encoding.ASCII.GetString(chunk.Span);
-                                var data = Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
-                                await rs.WriteAsync(data, 0, data.Length, ct);
-                            }
-                            else
-                            {
-                                if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                                    await rs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-                                else
-                                    await rs.WriteAsync(chunk.ToArray(), ct);
-                            }
-                        }
-                    }
-                    await writer.WriteLineAsync("226 Transfer complete");
-                    break;
-                case "STOR":
-                    await writer.WriteLineAsync("150 Opening data connection for STOR");
-            using (var storStream = await OpenDataStreamAsync(ct))
-                    {
-                        async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
-                        {
-                            var buffer = new byte[8192];
-                            int read;
-                while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                            await foreach (var chunk in _storage.ReadAsync(ResolvePath(parsed.Argument), 8192, ct))
                             {
                                 if (_type == 'A')
                                 {
-                                    // collapse CRLF to LF for ASCII storage
-                                    var text = Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
-                                    yield return Encoding.ASCII.GetBytes(text);
+                                    // naive ASCII: convert \n to \r\n
+                                    var text = Encoding.ASCII.GetString(chunk.Span);
+                                    var data = Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
+                                    await rs.WriteAsync(data, 0, data.Length, ct);
                                 }
                                 else
                                 {
-                                    yield return new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                                    if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
+                                        await rs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
+                                    else
+                                        await rs.WriteAsync(chunk.ToArray(), ct);
                                 }
                             }
                         }
-                        await _storage.WriteAsync(ResolvePath(parsed.Argument), ReadStream(ct), ct);
+                        await writer.WriteLineAsync("226 Transfer complete");
                     }
-                    await writer.WriteLineAsync("226 Transfer complete");
+                    catch (Exception)
+                    {
+                        await writer.WriteLineAsync("425 Can't open data connection");
+                    }
+                    break;
+                case "STOR":
+                    await writer.WriteLineAsync("150 Opening data connection for STOR");
+                    try
+                    {
+                        using (var storStream = await OpenDataStreamAsync(ct))
+                        {
+                            async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
+                            {
+                                var buffer = new byte[8192];
+                                int read;
+                                while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                                {
+                                    if (_type == 'A')
+                                    {
+                                        // collapse CRLF to LF for ASCII storage
+                                        var text = Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
+                                        yield return Encoding.ASCII.GetBytes(text);
+                                    }
+                                    else
+                                    {
+                                        yield return new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                                    }
+                                }
+                            }
+                            await _storage.WriteAsync(ResolvePath(parsed.Argument), ReadStream(ct), ct);
+                        }
+                        await writer.WriteLineAsync("226 Transfer complete");
+                    }
+                    catch (Exception)
+                    {
+                        await writer.WriteLineAsync("425 Can't open data connection");
+                    }
                     break;
                 case "SIZE":
                     {
