@@ -36,4 +36,20 @@ public static class Metrics
         name: "ftp_errors_total",
         unit: "count",
         description: "Total number of errors encountered");
+
+    // Session-level metrics (low-cardinality tags only; e.g., a bounded session_id or none)
+    public static readonly Counter<long> SessionBytesSent = Meter.CreateCounter<long>(
+        name: "ftp_session_bytes_sent_total",
+        unit: "bytes",
+        description: "Bytes sent over data connections attributed to a session");
+
+    public static readonly Counter<long> SessionBytesReceived = Meter.CreateCounter<long>(
+        name: "ftp_session_bytes_received_total",
+        unit: "bytes",
+        description: "Bytes received over data connections attributed to a session");
+
+    public static readonly UpDownCounter<long> SessionActiveTransfers = Meter.CreateUpDownCounter<long>(
+        name: "ftp_session_active_transfers",
+        unit: "transfers",
+        description: "Active data transfers per session");
 }

@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
+using FtpServer.Core.Observability;
 using FtpServer.Core.Protocol;
 using Microsoft.Extensions.Options;
-using FtpServer.Core.Observability;
 
 namespace FtpServer.Core.Server.Commands;
 
@@ -44,6 +44,7 @@ internal sealed class RetrHandler : IFtpCommandHandler
             long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
             var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
             (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
+            var sid = (context as FtpServer.Core.Server.FtpSession)!.SessionId;
             await foreach (var chunk in (offset > 0 ? _storage.ReadFromOffsetAsync(path, offset, 8192, token) : _storage.ReadAsync(path, 8192, token)))
             {
                 if (context.TransferType == 'A')
@@ -52,12 +53,14 @@ internal sealed class RetrHandler : IFtpCommandHandler
                     var data = System.Text.Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
                     await rs.WriteAsync(data, 0, data.Length, token);
                     Metrics.BytesSent.Add(data.Length);
+                    Metrics.SessionBytesSent.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid));
                     sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                 }
                 else
                 {
                     await rs.WriteAsync(chunk, token);
                     Metrics.BytesSent.Add(chunk.Length);
+                    Metrics.SessionBytesSent.Add(chunk.Length, new KeyValuePair<string, object?>("session_id", sid));
                     sent += chunk.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                 }
             }

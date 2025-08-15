@@ -40,13 +40,14 @@ internal sealed class AppeHandler : IFtpCommandHandler
             var token = xferCts.Token;
 
             // Build content enumerable, appending; storage layer handles REST truncate when needed
+            var sid = _session.SessionId;
             async IAsyncEnumerable<ReadOnlyMemory<byte>> Content([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
                 var offset = _session.RestartOffset;
                 _session.RestartOffset = 0; // consume
                 long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
 
-        var buffer = new byte[8192];
+                var buffer = new byte[8192];
                 int read;
                 while ((read = await ds.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
                 {
@@ -54,12 +55,12 @@ internal sealed class AppeHandler : IFtpCommandHandler
                     {
                         var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
                         var data = System.Text.Encoding.ASCII.GetBytes(text);
-            yield return data; sent += data.Length; FtpServer.Core.Observability.Metrics.BytesReceived.Add(data.Length); sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                        yield return data; sent += data.Length; FtpServer.Core.Observability.Metrics.BytesReceived.Add(data.Length); FtpServer.Core.Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
                         var data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
-            yield return data; sent += data.Length; FtpServer.Core.Observability.Metrics.BytesReceived.Add(data.Length); sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                        yield return data; sent += data.Length; FtpServer.Core.Observability.Metrics.BytesReceived.Add(data.Length); FtpServer.Core.Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }
             }

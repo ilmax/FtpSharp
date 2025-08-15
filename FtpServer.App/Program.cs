@@ -42,7 +42,7 @@ var cmd = new RootCommand("FTP Server host with ASP.NET Core health")
     portOption, addressOption, maxSessionsOption, passiveStartOption, passiveEndOption, authOption, storageOption, healthEnabled, healthUrl
 };
 
-cmd.SetHandler(async (InvocationContext ctx) =>
+cmd.SetHandler((InvocationContext ctx) =>
 {
     var pr = ctx.ParseResult;
     var port = pr.GetValueForOption(portOption);

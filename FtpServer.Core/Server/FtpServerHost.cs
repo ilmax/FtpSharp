@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Sockets;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
-using Microsoft.Extensions.Logging;
 using FtpServer.Core.Observability;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace FtpServer.Core.Server;

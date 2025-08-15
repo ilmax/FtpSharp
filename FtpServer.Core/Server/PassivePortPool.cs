@@ -14,7 +14,7 @@ public sealed class PassivePortPool : IAsyncDisposable
         _options = options;
     }
 
-    public async Task<PassiveLease> LeaseAsync(CancellationToken ct)
+    public Task<PassiveLease> LeaseAsync(CancellationToken ct)
     {
         var start = _options.Value.PassivePortRangeStart;
         var end = _options.Value.PassivePortRangeEnd;
@@ -32,7 +32,7 @@ public sealed class PassivePortPool : IAsyncDisposable
             {
                 var l = new TcpListener(IPAddress.Loopback, p);
                 l.Start();
-                return new PassiveLease(p, l, this);
+                return Task.FromResult(new PassiveLease(p, l, this));
             }
             catch
             {

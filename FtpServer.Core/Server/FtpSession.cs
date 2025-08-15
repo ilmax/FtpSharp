@@ -2,12 +2,12 @@ using System.Net.Sockets;
 using System.Text;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
+using FtpServer.Core.Observability;
 using FtpServer.Core.Protocol;
 // Unused imports removed after handler extraction
 
 using FtpServer.Core.Server.Commands;
 using Microsoft.Extensions.Options;
-using FtpServer.Core.Observability;
 
 namespace FtpServer.Core.Server;
 
@@ -33,6 +33,8 @@ public sealed class FtpSession : IFtpSessionContext
     private System.Net.IPEndPoint? _activeEndpoint;
     private long _restartOffset;
     internal long RestartOffset { get => _restartOffset; set => _restartOffset = value; }
+    private readonly string _sessionId = Guid.NewGuid().ToString("N");
+    public string SessionId => _sessionId;
 
     public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool)
     {
@@ -193,14 +195,16 @@ public sealed class FtpSession : IFtpSessionContext
             var client = await _pasvListener.AcceptTcpClientAsync(tok);
             _pasvListener.Stop();
             _pasvListener = null;
-            return client.GetStream();
+            Metrics.SessionActiveTransfers.Add(1, new KeyValuePair<string, object?>("session_id", _sessionId));
+            return new SessionTaggedStream(client.GetStream(), () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }
         if (_activeEndpoint is not null)
         {
             var client = new TcpClient();
             await client.ConnectAsync(_activeEndpoint, tok);
             _activeEndpoint = null;
-            return client.GetStream();
+            Metrics.SessionActiveTransfers.Add(1, new KeyValuePair<string, object?>("session_id", _sessionId));
+            return new SessionTaggedStream(client.GetStream(), () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }
         throw new IOException("425 Can't open data connection");
     }
@@ -208,4 +212,41 @@ public sealed class FtpSession : IFtpSessionContext
     // All command-specific parsing and formatting moved to handlers
 
     // Parsing moved to FtpCommandParser
+}
+
+internal sealed class SessionTaggedStream : Stream
+{
+    private readonly Stream _inner;
+    private readonly Action _onDispose;
+    public SessionTaggedStream(Stream inner, Action onDispose)
+    {
+        _inner = inner;
+        _onDispose = onDispose;
+    }
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        try { _inner.Dispose(); } finally { _onDispose(); }
+    }
+    public override async ValueTask DisposeAsync()
+    {
+        try { await _inner.DisposeAsync(); } finally { _onDispose(); }
+    }
+    public override bool CanRead => _inner.CanRead;
+    public override bool CanSeek => _inner.CanSeek;
+    public override bool CanWrite => _inner.CanWrite;
+    public override long Length => _inner.Length;
+    public override long Position { get => _inner.Position; set => _inner.Position = value; }
+    public override void Flush() => _inner.Flush();
+    public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
+    public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+    public override int Read(Span<byte> buffer) => _inner.Read(buffer);
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => _inner.ReadAsync(buffer, offset, count, cancellationToken);
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => _inner.ReadAsync(buffer, cancellationToken);
+    public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+    public override void SetLength(long value) => _inner.SetLength(value);
+    public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
+    public override void Write(ReadOnlySpan<byte> buffer) => _inner.Write(buffer);
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => _inner.WriteAsync(buffer, offset, count, cancellationToken);
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => _inner.WriteAsync(buffer, cancellationToken);
 }
