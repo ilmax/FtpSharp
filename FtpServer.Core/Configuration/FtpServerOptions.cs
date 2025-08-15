@@ -39,4 +39,12 @@ public sealed class FtpServerOptions
     /// <summary>Selected authenticator plugin name (e.g., "InMemory", "Basic").</summary>
     [Required]
     public string Authenticator { get; init; } = "InMemory";
+
+    /// <summary>Timeout in milliseconds for opening a data connection (PASV accept or active connect). Default: 5000.</summary>
+    [Range(100, 600_000)]
+    public int DataOpenTimeoutMs { get; init; } = 5_000;
+
+    /// <summary>Timeout in milliseconds for a data transfer operation (read/write). Default: 30000.</summary>
+    [Range(100, 3_600_000)]
+    public int DataTransferTimeoutMs { get; init; } = 30_000;
 }

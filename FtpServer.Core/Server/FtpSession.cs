@@ -61,8 +61,8 @@ public sealed class FtpSession : IFtpSessionContext
             ["EPSV"] = new EpsvHandler(),
             ["PORT"] = new PortHandler(),
             ["EPRT"] = new EprtHandler(),
-            ["RETR"] = new RetrHandler(_storage),
-            ["STOR"] = new StorHandler(_storage),
+            ["RETR"] = new RetrHandler(_storage, _options),
+            ["STOR"] = new StorHandler(_storage, _options),
             ["MODE"] = new ModeHandler(),
             ["STRU"] = new StruHandler(),
             ["ALLO"] = new AlloHandler(),
@@ -143,9 +143,12 @@ public sealed class FtpSession : IFtpSessionContext
 
     public async Task<Stream> OpenDataStreamAsync(CancellationToken ct)
     {
+        using var openTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        openTimeoutCts.CancelAfter(_options.Value.DataOpenTimeoutMs);
+        var tok = openTimeoutCts.Token;
         if (_pasvListener is not null)
         {
-            var client = await _pasvListener.AcceptTcpClientAsync(ct);
+            var client = await _pasvListener.AcceptTcpClientAsync(tok);
             _pasvListener.Stop();
             _pasvListener = null;
             return client.GetStream();
@@ -153,7 +156,7 @@ public sealed class FtpSession : IFtpSessionContext
         if (_activeEndpoint is not null)
         {
             var client = new TcpClient();
-            await client.ConnectAsync(_activeEndpoint, ct);
+            await client.ConnectAsync(_activeEndpoint, tok);
             _activeEndpoint = null;
             return client.GetStream();
         }

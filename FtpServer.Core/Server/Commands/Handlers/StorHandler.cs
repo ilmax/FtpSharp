@@ -2,14 +2,21 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using FtpServer.Core.Abstractions;
+using FtpServer.Core.Configuration;
 using FtpServer.Core.Protocol;
+using Microsoft.Extensions.Options;
 
 namespace FtpServer.Core.Server.Commands;
 
 internal sealed class StorHandler : IFtpCommandHandler
 {
     private readonly IStorageProvider _storage;
-    public StorHandler(IStorageProvider storage) => _storage = storage;
+    private readonly IOptions<FtpServerOptions> _options;
+    public StorHandler(IStorageProvider storage, IOptions<FtpServerOptions> options)
+    {
+        _storage = storage;
+        _options = options;
+    }
     public string Command => "STOR";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
@@ -24,6 +31,9 @@ internal sealed class StorHandler : IFtpCommandHandler
         try
         {
             using var storStream = await context.OpenDataStreamAsync(ct);
+            using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
+            var token = xferCts.Token;
             async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
                 var buffer = new byte[8192];
@@ -41,7 +51,7 @@ internal sealed class StorHandler : IFtpCommandHandler
                     }
                 }
             }
-            await _storage.WriteAsync(path, ReadStream(ct), ct);
+            await _storage.WriteAsync(path, ReadStream(token), token);
             await writer.WriteLineAsync("226 Transfer complete");
         }
         catch

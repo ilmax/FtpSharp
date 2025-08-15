@@ -182,6 +182,84 @@ public class ConcurrencyDataTests
     }
 
     [Fact]
+    public async Task Mixed_Parallel_RETR_and_STOR_Passive_Works()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var ep = (IPEndPoint)listener.LocalEndpoint;
+
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var storage = new InMemoryStorageProvider();
+        for (int i = 0; i < 4; i++)
+            await storage.WriteAsync($"/mix/r{i}.txt", OneChunk($"mix-{i}"), CancellationToken.None);
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions());
+
+        var tasks = new List<Task>();
+        // 4 RETR clients
+        for (int i = 0; i < 4; i++)
+        {
+            var idx = i;
+            tasks.Add(Task.Run(async () =>
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(ep.Address, ep.Port);
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+                using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+                _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+                using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
+                await writer.WriteLineAsync($"RETR /mix/r{idx}.txt"); _ = await reader.ReadLineAsync();
+                var buf = new byte[64]; var n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+                dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+                var got = Encoding.ASCII.GetString(buf, 0, n); Assert.Equal($"mix-{idx}", got);
+            }));
+        }
+        // 4 STOR clients
+        for (int i = 0; i < 4; i++)
+        {
+            var idx = i;
+            tasks.Add(Task.Run(async () =>
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(ep.Address, ep.Port);
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+                using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+                _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+                using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
+                await writer.WriteLineAsync($"STOR /mix/w{idx}.bin"); _ = await reader.ReadLineAsync();
+                var payload = Encoding.ASCII.GetBytes($"w-{idx}"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
+                dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            }));
+        }
+
+        var serverTasks = new List<Task>();
+        for (int i = 0; i < 8; i++)
+        {
+            var serverClient = await listener.AcceptTcpClientAsync();
+            var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            serverTasks.Add(session.RunAsync(cts.Token));
+        }
+
+        await Task.WhenAll(tasks);
+        listener.Stop();
+        await Task.WhenAll(serverTasks);
+
+        for (int i = 0; i < 4; i++)
+        {
+            var size = await storage.GetSizeAsync($"/mix/w{i}.bin", CancellationToken.None);
+            Assert.Equal($"w-{i}".Length, size);
+        }
+    }
+
+    [Fact]
     public async Task Many_Short_PASV_Transfers_Do_Not_Exhaust_Ports()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
