@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+.git
+.github
+*.user
+*.suo
+*.swp
+*.vs
+TestResults
