@@ -39,6 +39,7 @@ internal sealed class StorHandler : IFtpCommandHandler
             {
                 var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
                 (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
+                long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
                 if (offset > 0)
                 {
                     // Prepend existing up to offset to emulate truncate-then-append behavior
@@ -57,7 +58,9 @@ internal sealed class StorHandler : IFtpCommandHandler
                                 remaining -= take;
                                 if (remaining <= 0) break;
                             }
-                            yield return kept.ToArray();
+                            var k = kept.ToArray();
+                            yield return k;
+                            sent += k.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                         }
                     }
                 }
@@ -68,11 +71,13 @@ internal sealed class StorHandler : IFtpCommandHandler
                     if (context.TransferType == 'A')
                     {
                         var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
-                        yield return System.Text.Encoding.ASCII.GetBytes(text);
+                        var data = System.Text.Encoding.ASCII.GetBytes(text);
+                        yield return data; sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
-                        yield return new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        var data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        yield return data; sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }
             }

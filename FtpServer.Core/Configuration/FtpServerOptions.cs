@@ -51,4 +51,6 @@ public sealed class FtpServerOptions
     /// <summary>Timeout in milliseconds for reading control commands (idle). 0 disables timeout. Default: 0.</summary>
     [Range(0, 3_600_000)]
     public int ControlReadTimeoutMs { get; init; } = 0;
+    /// <summary>Optional per-transfer data rate limit in bytes per second. 0 disables throttling.</summary>
+    public int DataRateLimitBytesPerSec { get; set; } = 0;
 }

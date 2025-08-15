@@ -40,6 +40,7 @@ internal sealed class RetrHandler : IFtpCommandHandler
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
+            long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
             var offset = (context as FtpServer.Core.Server.FtpSession)!.RestartOffset;
             (context as FtpServer.Core.Server.FtpSession)!.RestartOffset = 0; // consume
             long skipped = 0;
@@ -60,12 +61,12 @@ internal sealed class RetrHandler : IFtpCommandHandler
                     {
                         var textS = System.Text.Encoding.ASCII.GetString(sliced.Span);
                         var dataS = System.Text.Encoding.ASCII.GetBytes(textS.Replace("\n", "\r\n"));
-                        await rs.WriteAsync(dataS, 0, dataS.Length, token);
+                        await rs.WriteAsync(dataS, 0, dataS.Length, token); sent += dataS.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                         continue;
                     }
                     else
                     {
-                        await rs.WriteAsync(sliced, token);
+                        await rs.WriteAsync(sliced, token); sent += sliced.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                         continue;
                     }
                 }
@@ -73,11 +74,11 @@ internal sealed class RetrHandler : IFtpCommandHandler
                 {
                     var text = System.Text.Encoding.ASCII.GetString(chunk.Span);
                     var data = System.Text.Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
-                    await rs.WriteAsync(data, 0, data.Length, token);
+                    await rs.WriteAsync(data, 0, data.Length, token); sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                 }
                 else
                 {
-                    await rs.WriteAsync(chunk, token);
+                    await rs.WriteAsync(chunk, token); sent += chunk.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                 }
             }
             await writer.WriteLineAsync("226 Transfer complete");

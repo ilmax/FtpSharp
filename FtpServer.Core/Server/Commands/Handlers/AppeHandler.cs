@@ -40,6 +40,7 @@ internal sealed class AppeHandler : IFtpCommandHandler
                 var offset = _session.RestartOffset;
                 _session.RestartOffset = 0; // consume
                 byte[]? existing = null;
+                long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
                 if (entry is not null)
                 {
                     // read existing into memory (simple baseline implementation)
@@ -59,11 +60,12 @@ internal sealed class AppeHandler : IFtpCommandHandler
                     // If REST offset provided, keep only up to offset
                     if (offset > 0 && offset <= existing.Length)
                     {
-                        yield return new ReadOnlyMemory<byte>(existing, 0, (int)offset).ToArray();
+                        var prefix = new ReadOnlyMemory<byte>(existing, 0, (int)offset).ToArray();
+                        yield return prefix; sent += prefix.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
-                        yield return existing;
+                        yield return existing; sent += existing.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }
 
@@ -74,11 +76,13 @@ internal sealed class AppeHandler : IFtpCommandHandler
                     if (context.TransferType == 'A')
                     {
                         var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
-                        yield return System.Text.Encoding.ASCII.GetBytes(text);
+                        var data = System.Text.Encoding.ASCII.GetBytes(text);
+                        yield return data; sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
-                        yield return new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        var data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        yield return data; sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }
             }

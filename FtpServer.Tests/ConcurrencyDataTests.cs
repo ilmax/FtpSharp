@@ -411,6 +411,49 @@ public class ConcurrencyDataTests
         await Task.WhenAll(serverTasks);
     }
 
+    [Fact]
+    public async Task Retr_Respects_Data_Rate_Limit_Basically()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
+        var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
+        var storage = new InMemoryStorageProvider();
+        // ~10KB file
+        var payload = new string('x', 10_240);
+        await storage.WriteAsync("/big.bin", OneChunk(payload), CancellationToken.None);
+        var options = Microsoft.Extensions.Options.Options.Create(new FtpServer.Core.Configuration.FtpServerOptions
+        {
+            DataRateLimitBytesPerSec = 2_048 // 2KB/s
+        });
+
+        var started = DateTime.UtcNow;
+        var clientTask = Task.Run(async () =>
+        {
+            using var client = new TcpClient(); await client.ConnectAsync(ep.Address, ep.Port);
+            using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, true);
+            using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+            _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
+            await writer.WriteLineAsync("RETR /big.bin"); _ = await reader.ReadLineAsync();
+            var buf = new byte[20_480]; int total = 0; int n;
+            while ((n = await dc.GetStream().ReadAsync(buf, total, buf.Length - total)) > 0) total += n;
+            dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            Assert.Equal(10_240, total);
+        });
+
+        var serverClient = await listener.AcceptTcpClientAsync();
+        var session = new FtpServer.Core.Server.FtpSession(serverClient, auth, storage, options);
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
+
+        var elapsed = DateTime.UtcNow - started;
+        // 10KB at 2KB/s ≈ 5s; allow slack but it shouldn't be under ~2s
+        Assert.True(elapsed.TotalSeconds >= 2);
+    }
+
     private static (string, int) ParsePasv(string s)
     {
         if (string.IsNullOrWhiteSpace(s) || !s.Contains('(') || !s.Contains(')'))
