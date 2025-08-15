@@ -165,6 +165,42 @@ internal sealed class DeleHandler : IFtpCommandHandler
     }
 }
 
+internal sealed class RnfrHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public RnfrHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "RNFR";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        var from = context.ResolvePath(parsed.Argument);
+        if (!await _storage.ExistsAsync(from, ct))
+        {
+            await writer.WriteLineAsync("550 File not found");
+            return;
+        }
+        context.PendingRenameFrom = from;
+        await writer.WriteLineAsync("350 Requested file action pending further information");
+    }
+}
+
+internal sealed class RntoHandler : IFtpCommandHandler
+{
+    private readonly IStorageProvider _storage;
+    public RntoHandler(IStorageProvider storage) => _storage = storage;
+    public string Command => "RNTO";
+    public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
+    {
+        if (context.PendingRenameFrom is null)
+        {
+            await writer.WriteLineAsync("503 Bad sequence of commands");
+            return;
+        }
+        await _storage.RenameAsync(context.PendingRenameFrom, context.ResolvePath(parsed.Argument), ct);
+        context.PendingRenameFrom = null;
+        await writer.WriteLineAsync("250 Requested file action okay, completed");
+    }
+}
+
 internal sealed class QuitHandler : IFtpCommandHandler
 {
     public string Command => "QUIT";

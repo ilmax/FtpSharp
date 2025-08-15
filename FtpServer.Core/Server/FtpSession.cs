@@ -54,6 +54,8 @@ public sealed class FtpSession : IFtpSessionContext
             ["MKD"]  = new MkdHandler(_storage),
             ["RMD"]  = new RmdHandler(_storage),
             ["DELE"] = new DeleHandler(_storage),
+            ["RNFR"] = new RnfrHandler(_storage),
+            ["RNTO"] = new RntoHandler(_storage),
         };
     }
 
@@ -63,6 +65,7 @@ public sealed class FtpSession : IFtpSessionContext
     public bool IsAuthenticated { get => _isAuthenticated; set => _isAuthenticated = value; }
     public string? PendingUser { get => _pendingUser; set => _pendingUser = value; }
     public bool ShouldQuit { get; set; }
+    public string? PendingRenameFrom { get => _pendingRenameFrom; set => _pendingRenameFrom = value; }
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -252,28 +255,7 @@ public sealed class FtpSession : IFtpSessionContext
                     }
                     break;
                 
-                case "RNFR":
-                    {
-                        var from = ResolvePath(parsed.Argument);
-                        if (!await _storage.ExistsAsync(from, ct))
-                        {
-                            await writer.WriteLineAsync("550 File not found");
-                            break;
-                        }
-                        _pendingRenameFrom = from;
-                        await writer.WriteLineAsync("350 Requested file action pending further information");
-                    }
-                    break;
-                case "RNTO":
-                    if (_pendingRenameFrom is null)
-                    {
-                        await writer.WriteLineAsync("503 Bad sequence of commands");
-                        break;
-                    }
-                    await _storage.RenameAsync(_pendingRenameFrom, ResolvePath(parsed.Argument), ct);
-                    _pendingRenameFrom = null;
-                    await writer.WriteLineAsync("250 Requested file action okay, completed");
-                    break;
+                
                 
                 default:
                     await writer.WriteLineAsync("502 Command not implemented");

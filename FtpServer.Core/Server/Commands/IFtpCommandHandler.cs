@@ -25,4 +25,5 @@ public interface IFtpSessionContext
     bool IsAuthenticated { get; set; }
     string? PendingUser { get; set; }
     bool ShouldQuit { get; set; }
+    string? PendingRenameFrom { get; set; }
 }
