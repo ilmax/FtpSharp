@@ -75,9 +75,9 @@ public sealed class FtpSession
                     await writer.WriteLineAsync("250 Requested file action okay, completed");
                     break;
                 case "PASV":
-                    var (ip, port) = await EnterPassiveModeAsync(ct);
-                    var p1 = port / 256; var p2 = port % 256;
-                    await writer.WriteLineAsync($"227 Entering Passive Mode ({ip.Replace('.', ',')},{p1},{p2})");
+                    var pe = await EnterPassiveModeAsync(ct);
+                    var p1 = pe.Port / 256; var p2 = pe.Port % 256;
+                    await writer.WriteLineAsync($"227 Entering Passive Mode ({pe.IpAddress.Replace('.', ',')},{p1},{p2})");
                     break;
                 case "LIST":
                     if (!_isAuthenticated)
@@ -115,7 +115,7 @@ public sealed class FtpSession
         }
     }
 
-    private async Task<(string ip, int port)> EnterPassiveModeAsync(CancellationToken ct)
+    private async Task<PassiveEndpoint> EnterPassiveModeAsync(CancellationToken ct)
     {
         _pasvListener?.Stop();
         _pasvListener = null;
@@ -128,14 +128,14 @@ public sealed class FtpSession
                 var l = new TcpListener(System.Net.IPAddress.Loopback, p);
                 l.Start();
                 _pasvListener = l;
-                return ("127.0.0.1", p);
+                return new PassiveEndpoint("127.0.0.1", p);
             }
             catch
             {
                 // try next
             }
         }
-        throw new IOException("No passive ports available");
+    throw new IOException("No passive ports available");
     }
 
     // Parsing moved to FtpCommandParser
