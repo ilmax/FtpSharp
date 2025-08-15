@@ -4,8 +4,7 @@ using FtpServer.Core.Abstractions;
 using FtpServer.Core.Protocol;
 using FtpServer.Core.Configuration;
 using Microsoft.Extensions.Options;
-using System.Runtime.InteropServices;
-using System.Globalization;
+// Unused imports removed after handler extraction
 
 using FtpServer.Core.Server.Commands;
 
@@ -89,25 +88,13 @@ public sealed class FtpSession : IFtpSessionContext
             var line = await reader.ReadLineAsync();
             if (line is null) break;
         var parsed = FtpCommandParser.Parse(line);
-        if (_handlers.TryGetValue(parsed.Command, out var handler))
+    if (_handlers.TryGetValue(parsed.Command, out var handler))
         {
             await handler.HandleAsync(this, parsed, writer, ct);
             if (ShouldQuit) return;
             continue;
         }
-        switch (parsed.Command)
-            {
-                
-                
-                
-                
-                
-                
-                
-                default:
-                    await writer.WriteLineAsync("502 Command not implemented");
-                    break;
-            }
+    await writer.WriteLineAsync("502 Command not implemented");
         }
     }
 
@@ -161,56 +148,7 @@ public sealed class FtpSession : IFtpSessionContext
         throw new IOException("425 Can't open data connection");
     }
 
-    private static bool TryParsePort(string arg, out System.Net.IPEndPoint? ep)
-    {
-        ep = null;
-        // Format: h1,h2,h3,h4,p1,p2
-        var parts = arg.Split(',');
-        if (parts.Length != 6) return false;
-        if (!byte.TryParse(parts[0], out var h1) || !byte.TryParse(parts[1], out var h2) ||
-            !byte.TryParse(parts[2], out var h3) || !byte.TryParse(parts[3], out var h4) ||
-            !byte.TryParse(parts[4], out var p1) || !byte.TryParse(parts[5], out var p2)) return false;
-        var addr = new System.Net.IPAddress(new byte[] { h1, h2, h3, h4 });
-        var port = p1 * 256 + p2;
-        ep = new System.Net.IPEndPoint(addr, port);
-        return true;
-    }
-
-    private static bool TryParseEprt(string arg, out System.Net.IPEndPoint? ep)
-    {
-        ep = null;
-        if (string.IsNullOrEmpty(arg)) return false;
-        var delim = arg[0];
-        var parts = arg.Split(delim);
-        // Expected: "" af addr port ""
-        if (parts.Length < 5) return false;
-        if (!int.TryParse(parts[1], out var af)) return false;
-        var addrStr = parts[2];
-        if (!int.TryParse(parts[3], out var port)) return false;
-        try
-        {
-            var addr = System.Net.IPAddress.Parse(addrStr);
-            // Optionally, validate af: 1=IPv4, 2=IPv6
-            if ((af == 1 && addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) ||
-                (af == 2 && addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6))
-                return false;
-            ep = new System.Net.IPEndPoint(addr, port);
-            return true;
-        }
-        catch { return false; }
-    }
-
-    private static string FormatUnixListLine(FileSystemEntry e)
-    {
-        var perms = e.IsDirectory ? 'd' : '-';
-        var rights = "rwxr-xr-x"; // placeholder
-        var links = 1;
-        var owner = "owner";
-        var group = "group";
-        var size = e.Length ?? 0;
-        var date = DateTimeOffset.Now.ToString("MMM dd HH:mm", CultureInfo.InvariantCulture);
-        return $"{perms}{rights} {links,3} {owner,5} {group,5} {size,8} {date} {e.Name}";
-    }
+    // All command-specific parsing and formatting moved to handlers
 
     // Parsing moved to FtpCommandParser
 }
