@@ -72,6 +72,19 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         return Task.FromResult(File.Exists(phys) ? new FileInfo(phys).Length : 0L);
     }
 
+    public Task<FileSystemEntry?> GetEntryAsync(string path, CancellationToken ct)
+    {
+        var (phys, logical, _) = Physical(path);
+        if (Directory.Exists(phys))
+            return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(System.IO.Path.GetFileName(phys), logical, true, null));
+        if (File.Exists(phys))
+        {
+            var info = new FileInfo(phys);
+            return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(System.IO.Path.GetFileName(phys), logical, false, info.Length));
+        }
+        return Task.FromResult<FileSystemEntry?>(null);
+    }
+
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadAsync(string path, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         var (phys, _, _) = Physical(path);

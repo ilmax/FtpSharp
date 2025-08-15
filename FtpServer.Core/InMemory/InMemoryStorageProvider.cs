@@ -72,6 +72,12 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             foreach (var (_, full) in d2.Children.ToArray())
                 DeleteAsync(full, true, ct).GetAwaiter().GetResult();
         }
+        // remove entry from parent directory
+        var parent = Parent(path);
+        if (_nodes.TryGetValue(parent, out var pnode) && pnode is DirNode pd)
+        {
+            pd.Children.Remove(Name(path));
+        }
         _nodes.TryRemove(path, out _);
         return Task.CompletedTask;
     }
@@ -82,6 +88,19 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
             return Task.FromResult((long)f.Content.Length);
         return Task.FromResult(0L);
+    }
+
+    public Task<FileSystemEntry?> GetEntryAsync(string path, CancellationToken ct)
+    {
+        path = Norm(path);
+        if (_nodes.TryGetValue(path, out var node))
+        {
+            if (node is DirNode)
+                return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, true, null));
+            if (node is FileNode f)
+                return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, false, f.Content.Length));
+        }
+        return Task.FromResult<FileSystemEntry?>(null);
     }
 
     public Task RenameAsync(string fromPath, string toPath, CancellationToken ct)

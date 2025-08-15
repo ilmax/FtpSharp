@@ -16,6 +16,8 @@ public interface IStorageProvider
     Task CreateDirectoryAsync(string path, CancellationToken ct);
     Task DeleteAsync(string path, bool recursive, CancellationToken ct);
     Task<long> GetSizeAsync(string path, CancellationToken ct);
+    /// <summary>Get a single entry for a path, or null if missing.</summary>
+    Task<FileSystemEntry?> GetEntryAsync(string path, CancellationToken ct);
     /// <summary>Rename a file from one path to another. Implementations may throw NotSupportedException for directories.</summary>
     Task RenameAsync(string fromPath, string toPath, CancellationToken ct);
 

@@ -188,8 +188,15 @@ public sealed class FtpSession
                     await writer.WriteLineAsync($"257 \"{ResolvePath(parsed.Argument)}\" created");
                     break;
                 case "RMD":
-                    await _storage.DeleteAsync(ResolvePath(parsed.Argument), recursive: true, ct);
-                    await writer.WriteLineAsync("250 Requested file action okay, completed");
+                    try
+                    {
+                        await _storage.DeleteAsync(ResolvePath(parsed.Argument), recursive: false, ct);
+                        await writer.WriteLineAsync("250 Requested file action okay, completed");
+                    }
+                    catch (IOException)
+                    {
+                        await writer.WriteLineAsync("550 Directory not empty");
+                    }
                     break;
                 case "DELE":
                     {
