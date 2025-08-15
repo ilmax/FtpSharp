@@ -21,6 +21,7 @@ public sealed class FtpSession
 
     private bool _isAuthenticated;
     private string? _pendingUser;
+    private string? _pendingRenameFrom;
     private string _cwd = "/";
     private TcpListener? _pasvListener;
     private char _type = 'I'; // I=binary, A=ascii
@@ -49,6 +50,9 @@ public sealed class FtpSession
         var parsed = FtpCommandParser.Parse(line);
         switch (parsed.Command)
             {
+                case "NOOP":
+                    await writer.WriteLineAsync("200 NOOP ok");
+                    break;
                 case "USER":
             _pendingUser = parsed.Argument;
                     await writer.WriteLineAsync("331 User name okay, need password.");
@@ -70,7 +74,10 @@ public sealed class FtpSession
                     await writer.WriteLineAsync("211-Features");
                     await writer.WriteLineAsync(" UTF8");
                     await writer.WriteLineAsync(" PASV");
+                    await writer.WriteLineAsync(" EPSV");
                     await writer.WriteLineAsync(" PORT");
+                    await writer.WriteLineAsync(" EPRT");
+                    await writer.WriteLineAsync(" SIZE");
                     await writer.WriteLineAsync(" TYPE A;I");
                     await writer.WriteLineAsync("211 End");
                     break;
@@ -86,6 +93,11 @@ public sealed class FtpSession
                     _cwd = parsed.Argument;
                     await writer.WriteLineAsync("250 Requested file action okay, completed");
                     break;
+                case "CDUP":
+                    _cwd = _cwd == "/" ? "/" : _cwd.Substring(0, _cwd.LastIndexOf('/'));
+                    if (string.IsNullOrEmpty(_cwd)) _cwd = "/";
+                    await writer.WriteLineAsync("200 Directory changed to parent");
+                    break;
                 case "TYPE":
                     var t = parsed.Argument.ToUpperInvariant();
                     if (t == "I" || t.StartsWith("I ")) { _type = 'I'; await writer.WriteLineAsync("200 Type set to I"); }
@@ -97,6 +109,10 @@ public sealed class FtpSession
                     var p1 = pe.Port / 256; var p2 = pe.Port % 256;
                     await writer.WriteLineAsync($"227 Entering Passive Mode ({pe.IpAddress.Replace('.', ',')},{p1},{p2})");
                     break;
+                case "EPSV":
+                    var epe = EnterPassiveMode();
+                    await writer.WriteLineAsync($"229 Entering Extended Passive Mode (|||{epe.Port}|)");
+                    break;
                 case "PORT":
                     if (!TryParsePort(parsed.Argument, out var ep))
                     {
@@ -104,6 +120,15 @@ public sealed class FtpSession
                         break;
                     }
                     _activeEndpoint = ep;
+                    await writer.WriteLineAsync("200 Command okay");
+                    break;
+                case "EPRT":
+                    if (!TryParseEprt(parsed.Argument, out var ep2))
+                    {
+                        await writer.WriteLineAsync("501 Syntax error in parameters or arguments");
+                        break;
+                    }
+                    _activeEndpoint = ep2;
                     await writer.WriteLineAsync("200 Command okay");
                     break;
                 case "LIST":
@@ -123,6 +148,24 @@ public sealed class FtpSession
                         }
                     }
                     await writer.WriteLineAsync("226 Closing data connection. Requested file action successful");
+                    break;
+                case "NLST":
+                    if (!_isAuthenticated)
+                    {
+                        await writer.WriteLineAsync("530 Not logged in.");
+                        break;
+                    }
+                    await writer.WriteLineAsync("150 Opening data connection for NLST");
+                    using (var data2 = await OpenDataStreamAsync(ct))
+                    using (var dw2 = new StreamWriter(data2, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true })
+                    {
+                        var entries = await _storage.ListAsync(_cwd, ct);
+                        foreach (var e in entries)
+                        {
+                            await dw2.WriteLineAsync(e.Name);
+                        }
+                    }
+                    await writer.WriteLineAsync("226 NLST complete");
                     break;
                 case "MKD":
                     await _storage.CreateDirectoryAsync(ResolvePath(parsed.Argument), ct);
@@ -186,6 +229,35 @@ public sealed class FtpSession
                         await _storage.WriteAsync(ResolvePath(parsed.Argument), ReadStream(ct), ct);
                     }
                     await writer.WriteLineAsync("226 Transfer complete");
+                    break;
+                case "SIZE":
+                    var size = await _storage.GetSizeAsync(ResolvePath(parsed.Argument), ct);
+                    await writer.WriteLineAsync($"213 {size}");
+                    break;
+                case "RNFR":
+                    _pendingRenameFrom = ResolvePath(parsed.Argument);
+                    await writer.WriteLineAsync("350 Requested file action pending further information");
+                    break;
+                case "RNTO":
+                    if (_pendingRenameFrom is null)
+                    {
+                        await writer.WriteLineAsync("503 Bad sequence of commands");
+                        break;
+                    }
+                    await _storage.RenameAsync(_pendingRenameFrom, ResolvePath(parsed.Argument), ct);
+                    _pendingRenameFrom = null;
+                    await writer.WriteLineAsync("250 Requested file action okay, completed");
+                    break;
+                case "STAT":
+                    await writer.WriteLineAsync("211-FTP Server status");
+                    await writer.WriteLineAsync($" Current directory: {_cwd}");
+                    await writer.WriteLineAsync(" Features: UTF8 PASV PORT EPSV EPRT TYPE");
+                    await writer.WriteLineAsync("211 End");
+                    break;
+                case "HELP":
+                    await writer.WriteLineAsync("214-The following commands are recognized.");
+                    await writer.WriteLineAsync(" USER PASS SYST FEAT PWD CWD CDUP TYPE PASV EPSV PORT EPRT LIST NLST RETR STOR DELE MKD RMD SIZE RNFR RNTO STAT HELP QUIT");
+                    await writer.WriteLineAsync("214 Help OK.");
                     break;
                 case "QUIT":
                     await writer.WriteLineAsync("221 Service closing control connection");
@@ -260,6 +332,30 @@ public sealed class FtpSession
         var port = p1 * 256 + p2;
         ep = new System.Net.IPEndPoint(addr, port);
         return true;
+    }
+
+    private static bool TryParseEprt(string arg, out System.Net.IPEndPoint? ep)
+    {
+        ep = null;
+        if (string.IsNullOrEmpty(arg)) return false;
+        var delim = arg[0];
+        var parts = arg.Split(delim);
+        // Expected: "" af addr port ""
+        if (parts.Length < 5) return false;
+        if (!int.TryParse(parts[1], out var af)) return false;
+        var addrStr = parts[2];
+        if (!int.TryParse(parts[3], out var port)) return false;
+        try
+        {
+            var addr = System.Net.IPAddress.Parse(addrStr);
+            // Optionally, validate af: 1=IPv4, 2=IPv6
+            if ((af == 1 && addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) ||
+                (af == 2 && addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6))
+                return false;
+            ep = new System.Net.IPEndPoint(addr, port);
+            return true;
+        }
+        catch { return false; }
     }
 
     private static string FormatUnixListLine(FileSystemEntry e)

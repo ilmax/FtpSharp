@@ -16,6 +16,8 @@ public interface IStorageProvider
     Task CreateDirectoryAsync(string path, CancellationToken ct);
     Task DeleteAsync(string path, bool recursive, CancellationToken ct);
     Task<long> GetSizeAsync(string path, CancellationToken ct);
+    /// <summary>Rename a file from one path to another. Implementations may throw NotSupportedException for directories.</summary>
+    Task RenameAsync(string fromPath, string toPath, CancellationToken ct);
 
     /// <summary>Read a file as a sequence of buffers to avoid large copies.</summary>
     IAsyncEnumerable<ReadOnlyMemory<byte>> ReadAsync(string path, int bufferSize, CancellationToken ct);

@@ -84,6 +84,34 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         return Task.FromResult(0L);
     }
 
+    public Task RenameAsync(string fromPath, string toPath, CancellationToken ct)
+    {
+        fromPath = Norm(fromPath);
+        toPath = Norm(toPath);
+        if (!_nodes.TryGetValue(fromPath, out var node)) return Task.CompletedTask;
+
+        // Ensure destination parent exists
+        EnsureParentDir(toPath);
+
+        // Move node reference
+        _nodes[toPath] = node;
+        _nodes.TryRemove(fromPath, out _);
+
+        // Update parent directory child listings
+        var fromParent = Parent(fromPath);
+        var toParent = Parent(toPath);
+        var name = Name(toPath);
+        if (_nodes.TryGetValue(fromParent, out var fp) && fp is DirNode fpd)
+        {
+            fpd.Children.Remove(Name(fromPath));
+        }
+        if (_nodes.TryGetValue(toParent, out var tp) && tp is DirNode tpd)
+        {
+            tpd.Children[name] = toPath;
+        }
+        return Task.CompletedTask;
+    }
+
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadAsync(string path, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         path = Norm(path);
