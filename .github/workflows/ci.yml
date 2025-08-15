@@ -77,3 +77,24 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ needs.build-test.outputs.semver }}
             ghcr.io/${{ github.repository }}:latest
+
+  curl-integration:
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore FtpServer.sln
+      - name: Build
+        run: dotnet build FtpServer.App/FtpServer.App.csproj --configuration Release --no-restore
+      - name: Run curl-based integration tests
+        env:
+          PORT: 2121
+          PASV_START: 49152
+          PASV_END: 49162
+        run: |
+          chmod +x scripts/curl_integration_tests.sh
+          scripts/curl_integration_tests.sh
