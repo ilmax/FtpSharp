@@ -9,6 +9,7 @@ TMPDIR=$(mktemp -d)
 PORT=${PORT:-2121}
 PASV_START=${PASV_START:-49152}
 PASV_END=${PASV_END:-49162}
+DOTNET_CONFIGURATION=${DOTNET_CONFIGURATION:-Release}
 SERVER_LOG="$TMPDIR/server.log"
 FAIL=0
 
@@ -37,8 +38,8 @@ export FTP_FTPSERVER__HEALTHENABLED=false
 # Bind ASP.NET Core to an ephemeral port to avoid conflicts on 5000 during tests
 export ASPNETCORE_URLS="http://127.0.0.1:0"
 
-echo "[info] Starting server on 127.0.0.1:$PORT (PASV $PASV_START-$PASV_END)"
-dotnet run --project "$ROOT_DIR/FtpServer.App" --no-build >"$SERVER_LOG" 2>&1 &
+echo "[info] Starting server on 127.0.0.1:$PORT (PASV $PASV_START-$PASV_END) [config=$DOTNET_CONFIGURATION]"
+dotnet run --project "$ROOT_DIR/FtpServer.App" --no-build --configuration "$DOTNET_CONFIGURATION" >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 
 # Wait for server to accept connections
@@ -154,7 +155,8 @@ echo "[ok] Core cURL segment passed"
 
 # Additional protocol checks
 step "FEAT advertises REST and APPE"
-FEAT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "FEAT" 2>&1 || true)
+# Use -v to ensure control replies are emitted to stderr across curl versions
+FEAT=$(curl -sS -v "${AUTH[@]}" "$FTP_URL/" --quote "FEAT" 2>&1 || true)
 echo "$FEAT" | grep -q "REST STREAM" || { echo "[error] FEAT missing REST STREAM" >&2; FAIL=1; }
 echo "$FEAT" | grep -q "APPE" || { echo "[error] FEAT missing APPE" >&2; FAIL=1; }
 
@@ -164,12 +166,13 @@ if ! curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "SYST" >/dev/null; then
 fi
 
 step "CDUP at root stays at /"
-PWD_OUT=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
+# Use -v so 257 PWD response is captured reliably
+PWD_OUT=$(curl -sS -v "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
 echo "$PWD_OUT" | grep -q "/" || { echo "[error] PWD did not return path" >&2; FAIL=1; }
 if ! curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CDUP" >/dev/null; then
   echo "[error] CDUP failed" >&2; FAIL=1;
 fi
-PWD_OUT2=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
+PWD_OUT2=$(curl -sS -v "${AUTH[@]}" "$FTP_URL/" --quote "PWD" 2>&1)
 echo "$PWD_OUT2" | grep -q "/" || { echo "[error] PWD after CDUP did not return path" >&2; FAIL=1; }
 
 step "DELE non-existent returns 550"
