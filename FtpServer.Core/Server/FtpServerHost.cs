@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
 using Microsoft.Extensions.Logging;
+using FtpServer.Core.Observability;
 using Microsoft.Extensions.Options;
 
 namespace FtpServer.Core.Server;
@@ -57,9 +58,19 @@ public sealed class FtpServerHost : IAsyncDisposable
                 }
                 var opts = _options.Value;
                 var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options);
+                Metrics.SessionsActive.Add(1);
                 var task = session.RunAsync(ct);
                 _sessions.TryAdd(task, 0);
-                _ = task.ContinueWith(t => { _sessions.TryRemove(t, out _); }, TaskScheduler.Default);
+                _ = task.ContinueWith(t =>
+                {
+                    _sessions.TryRemove(t, out _);
+                    Metrics.SessionsActive.Add(-1);
+                    if (t.IsFaulted)
+                    {
+                        Metrics.ErrorsTotal.Add(1);
+                        _logger.LogError(t.Exception, "Session terminated with error");
+                    }
+                }, TaskScheduler.Default);
             }
         }
         catch (OperationCanceledException) { }

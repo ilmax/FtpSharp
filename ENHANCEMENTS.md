@@ -5,7 +5,7 @@ This document tracks possible improvements and future features for the FTP serve
 ## Protocol Features
 
 - FTPS (AUTH TLS, PBSZ, PROT, explicit/implicit modes) with cert management.
-- Resume/offset: REST and APPE support; integrate with FEAT.
+- ✅ Resume/offset: REST and APPE support; integrate with FEAT.
 - MDTM (modification time) and MFMT; MLST/MLSD structured listings.
 - SITE commands (e.g., CHMOD), CHOWN/CHGRP (if provider supports permissions).
 - HASH/XCRC/XMD5 (non-standard) for integrity checks.
@@ -13,14 +13,14 @@ This document tracks possible improvements and future features for the FTP serve
 
 ## Data Channel and Performance
 
-- Per-path reader/writer locks to serialize same-file writers and allow concurrent readers.
-- Throttling/rate limits per-session or global; configurable.
+- ✅ Per-path reader/writer locks to serialize same-file writers and allow concurrent readers.
+- ✅ Throttling/rate limits per-transfer; configurable. (Shared/global limiter pending)
 - Zero-copy streaming where possible (Pipeline or MemoryPool usage).
 - Pipelining support and command queueing (where safe) to reduce RTT.
 
 ## Concurrency and Robustness
 
-- Timeouts for control commands and idle session timeout; currently added data open/transfer timeouts.
+- ✅ Timeouts for control commands (idle) and data open/transfer timeouts.
 - Back-pressure and cancellation propagation improvements for slow clients.
 - Passive port pool with leasing to avoid linear scan; support randomization to reduce collisions.
 - Session-level metrics: current transfers, bytes sent/received, timing.
@@ -39,8 +39,8 @@ This document tracks possible improvements and future features for the FTP serve
 
 ## Observability
 
-- Structured logs with correlation IDs per session; audit logs for file ops.
-- Metrics (Prometheus): sessions, commands, transfer bytes, errors, latencies.
+- ✅ Structured logs (basic) and metrics: sessions active, commands count and duration, transfer bytes, errors.
+- Health endpoints if hosted with ASP.NET Core minimal API.
 - Health endpoints if hosted with ASP.NET Core minimal API.
 
 ## Tooling and DX

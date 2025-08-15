@@ -22,7 +22,13 @@ jobs:
       - name: Install GitVersion
         uses: GitTools/actions/gitversion/setup@v3
         with:
-          versionSpec: '5.x'
+        run: dotnet test --no-build -v minimal --logger "trx;LogFileName=test_results.trx"
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
       - name: Determine Version
         id: gitversion
         uses: GitTools/actions/gitversion/execute@v3

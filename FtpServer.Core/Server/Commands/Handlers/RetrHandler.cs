@@ -5,6 +5,7 @@ using FtpServer.Core.Abstractions;
 using FtpServer.Core.Configuration;
 using FtpServer.Core.Protocol;
 using Microsoft.Extensions.Options;
+using FtpServer.Core.Observability;
 
 namespace FtpServer.Core.Server.Commands;
 
@@ -49,11 +50,15 @@ internal sealed class RetrHandler : IFtpCommandHandler
                 {
                     var text = System.Text.Encoding.ASCII.GetString(chunk.Span);
                     var data = System.Text.Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
-                    await rs.WriteAsync(data, 0, data.Length, token); sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                    await rs.WriteAsync(data, 0, data.Length, token);
+                    Metrics.BytesSent.Add(data.Length);
+                    sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                 }
                 else
                 {
-                    await rs.WriteAsync(chunk, token); sent += chunk.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                    await rs.WriteAsync(chunk, token);
+                    Metrics.BytesSent.Add(chunk.Length);
+                    sent += chunk.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                 }
             }
             await writer.WriteLineAsync("226 Transfer complete");

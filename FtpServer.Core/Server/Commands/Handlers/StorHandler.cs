@@ -48,12 +48,12 @@ internal sealed class StorHandler : IFtpCommandHandler
                     {
                         var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
                         var data = System.Text.Encoding.ASCII.GetBytes(text);
-                        yield return data; sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                        yield return data; sent += data.Length; FtpServer.Core.Observability.Metrics.BytesReceived.Add(data.Length); sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
                         var data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
-                        yield return data; sent += data.Length; sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
+                        yield return data; sent += data.Length; FtpServer.Core.Observability.Metrics.BytesReceived.Add(data.Length); sent = await FtpServer.Core.Server.Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }
             }

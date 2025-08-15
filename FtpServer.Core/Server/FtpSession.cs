@@ -7,6 +7,7 @@ using FtpServer.Core.Protocol;
 
 using FtpServer.Core.Server.Commands;
 using Microsoft.Extensions.Options;
+using FtpServer.Core.Observability;
 
 namespace FtpServer.Core.Server;
 
@@ -114,9 +115,13 @@ public sealed class FtpSession : IFtpSessionContext
                 }
                 if (line is null) break;
                 var parsed = FtpCommandParser.Parse(line);
+                Metrics.CommandsTotal.Add(1, new KeyValuePair<string, object?>("command", parsed.Command));
                 if (_handlers.TryGetValue(parsed.Command, out var handler))
                 {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
                     await handler.HandleAsync(this, parsed, writer, ct);
+                    sw.Stop();
+                    Metrics.CommandDurationMs.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("command", parsed.Command));
                     if (ShouldQuit) return;
                     continue;
                 }
