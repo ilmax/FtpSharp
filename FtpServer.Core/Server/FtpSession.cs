@@ -231,8 +231,16 @@ public sealed class FtpSession
                     await writer.WriteLineAsync("226 Transfer complete");
                     break;
                 case "SIZE":
-                    var size = await _storage.GetSizeAsync(ResolvePath(parsed.Argument), ct);
-                    await writer.WriteLineAsync($"213 {size}");
+                    {
+                        var path = ResolvePath(parsed.Argument);
+                        if (!await _storage.ExistsAsync(path, ct))
+                        {
+                            await writer.WriteLineAsync("550 File not found");
+                            break;
+                        }
+                        var size = await _storage.GetSizeAsync(path, ct);
+                        await writer.WriteLineAsync($"213 {size}");
+                    }
                     break;
                 case "RNFR":
                     _pendingRenameFrom = ResolvePath(parsed.Argument);
