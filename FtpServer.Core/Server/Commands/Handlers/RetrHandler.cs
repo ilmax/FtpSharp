@@ -65,10 +65,7 @@ internal sealed class RetrHandler : IFtpCommandHandler
                     }
                     else
                     {
-                        if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)sliced, out var segS))
-                            await rs.WriteAsync(segS.Array!, segS.Offset, segS.Count, token);
-                        else
-                            await rs.WriteAsync(sliced.ToArray(), token);
+                        await rs.WriteAsync(sliced, token);
                         continue;
                     }
                 }
@@ -80,10 +77,7 @@ internal sealed class RetrHandler : IFtpCommandHandler
                 }
                 else
                 {
-                    if (System.Runtime.InteropServices.MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                        await rs.WriteAsync(seg.Array!, seg.Offset, seg.Count, token);
-                    else
-                        await rs.WriteAsync(chunk.ToArray(), token);
+                    await rs.WriteAsync(chunk, token);
                 }
             }
             await writer.WriteLineAsync("226 Transfer complete");
