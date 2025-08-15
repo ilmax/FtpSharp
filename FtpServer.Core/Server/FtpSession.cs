@@ -20,24 +20,27 @@ public sealed class FtpSession : IFtpSessionContext
     private readonly IAuthenticator _auth;
     private readonly IStorageProvider _storage;
     private readonly IOptions<FtpServerOptions> _options;
+    private readonly PassivePortPool _passivePool;
 
     private bool _isAuthenticated;
     private string? _pendingUser;
     private string? _pendingRenameFrom;
     private string _cwd = "/";
     private TcpListener? _pasvListener;
+    private PassiveLease? _pasvLease;
     private char _type = 'I'; // I=binary, A=ascii
     public char TransferType { get => _type; set => _type = value; }
     private System.Net.IPEndPoint? _activeEndpoint;
     private long _restartOffset;
     internal long RestartOffset { get => _restartOffset; set => _restartOffset = value; }
 
-    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options)
+    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool)
     {
         _client = client;
         _auth = auth;
         _storage = storage;
         _options = options;
+        _passivePool = passivePool;
         _handlers = new Dictionary<string, IFtpCommandHandler>(StringComparer.OrdinalIgnoreCase)
         {
             ["NOOP"] = new NoopHandler(),
@@ -73,6 +76,10 @@ public sealed class FtpSession : IFtpSessionContext
             ["ALLO"] = new AlloHandler(),
         };
     }
+
+    // Back-compat for tests and callers not wiring PassivePortPool
+    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options)
+        : this(client, auth, storage, options, passivePool: null!) { }
 
     private readonly Dictionary<string, IFtpCommandHandler> _handlers;
 
@@ -132,14 +139,26 @@ public sealed class FtpSession : IFtpSessionContext
         {
             // Ensure any passive data listener is closed when the session ends
             try { _pasvListener?.Stop(); } catch { }
+            try { if (_pasvLease is not null) _ = _pasvLease.DisposeAsync(); } catch { }
             _pasvListener = null;
+            _pasvLease = null;
         }
     }
 
     public PassiveEndpoint EnterPassiveMode()
     {
-        _pasvListener?.Stop();
+        try { _pasvListener?.Stop(); } catch { }
         _pasvListener = null;
+        try { if (_pasvLease is not null) _ = _pasvLease.DisposeAsync(); } catch { }
+        _pasvLease = null;
+        if (_passivePool is not null)
+        {
+            var lease = _passivePool.LeaseAsync(CancellationToken.None).GetAwaiter().GetResult();
+            _pasvLease = lease;
+            _pasvListener = lease.Listener;
+            return new PassiveEndpoint("127.0.0.1", lease.Port);
+        }
+        // Fallback linear scan
         var start = _options.Value.PassivePortRangeStart;
         var end = _options.Value.PassivePortRangeEnd;
         for (int p = start; p <= end; p++)
@@ -151,10 +170,7 @@ public sealed class FtpSession : IFtpSessionContext
                 _pasvListener = l;
                 return new PassiveEndpoint("127.0.0.1", p);
             }
-            catch
-            {
-                // try next
-            }
+            catch { }
         }
         throw new IOException("No passive ports available");
     }

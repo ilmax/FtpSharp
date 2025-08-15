@@ -25,6 +25,7 @@ builder.Services.AddSingleton<FileSystemStorageProvider>();
 builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.PluginRegistry>();
 builder.Services.AddSingleton<IStorageProviderFactory, FtpServer.Core.Plugins.PluginRegistry>();
 builder.Services.AddSingleton<FtpServerHost>();
+builder.Services.AddSingleton<PassivePortPool>();
 
 var portOption = new Option<int?>(name: "--port") { Description = "Control connection port", Arity = ArgumentArity.ZeroOrOne };
 var addressOption = new Option<string>(name: "--listen") { Description = "IP address to bind", Arity = ArgumentArity.ZeroOrOne };

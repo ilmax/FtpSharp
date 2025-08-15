@@ -22,7 +22,7 @@ This document tracks possible improvements and future features for the FTP serve
 
 - ✅ Timeouts for control commands (idle) and data open/transfer timeouts.
 - Back-pressure and cancellation propagation improvements for slow clients.
-- Passive port pool with leasing to avoid linear scan; support randomization to reduce collisions.
+- ✅ Passive port pool with leasing to avoid linear scan; randomization to reduce collisions.
 - Session-level metrics: current transfers, bytes sent/received, timing.
 
 ## Authentication and Authorization

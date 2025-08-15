@@ -18,18 +18,21 @@ public sealed class FtpServerHost : IAsyncDisposable
     private readonly IAuthenticatorFactory _authFactory;
     private readonly IStorageProviderFactory _storageFactory;
     private TcpListener? _listener;
+    private readonly PassivePortPool _passivePool;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<Task, byte> _sessions = new();
 
     public FtpServerHost(
         IOptions<FtpServerOptions> options,
         ILogger<FtpServerHost> logger,
     IAuthenticatorFactory authFactory,
-    IStorageProviderFactory storageFactory)
+    IStorageProviderFactory storageFactory,
+    PassivePortPool passivePool)
     {
         _options = options;
         _logger = logger;
         _authFactory = authFactory;
         _storageFactory = storageFactory;
+        _passivePool = passivePool;
     }
 
     public async Task StartAsync(CancellationToken ct)
@@ -57,7 +60,7 @@ public sealed class FtpServerHost : IAsyncDisposable
                     continue;
                 }
                 var opts = _options.Value;
-                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options);
+                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options, _passivePool);
                 Metrics.SessionsActive.Add(1);
                 var task = session.RunAsync(ct);
                 _sessions.TryAdd(task, 0);
