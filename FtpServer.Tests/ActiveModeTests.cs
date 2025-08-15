@@ -10,7 +10,9 @@ public class ActiveModeTests
     [Fact]
     public async Task PORT_Retr_Works()
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
+        var listener = new TcpListener(IPAddress.Loopback, 0); 
+        listener.Start(); 
+        var ep = (IPEndPoint)listener.LocalEndpoint;
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
         await storage.WriteAsync("/file.txt", OneChunk("ABC"), CancellationToken.None);
@@ -48,7 +50,9 @@ public class ActiveModeTests
     [Fact]
     public async Task EPRT_Stor_Works()
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
+        var listener = new TcpListener(IPAddress.Loopback, 0); 
+        listener.Start(); 
+        var ep = (IPEndPoint)listener.LocalEndpoint;
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());

@@ -11,9 +11,13 @@ public class HealthServerTests
     [Fact]
     public async Task Starts_And_Responds_When_Enabled()
     {
-        var url = "http://127.0.0.1:0/"; // 0 not supported by HttpListener prefixes; use fixed high port
-        var port = 18080 + Random.Shared.Next(0, 1000);
-        url = $"http://127.0.0.1:{port}/";
+        int port;  
+        using (var listener = new TcpListener(IPAddress.Loopback, 0))  
+        {  
+            listener.Start();  
+            port = ((IPEndPoint)listener.LocalEndpoint).Port;  
+        }  
+        var url = $"http://127.0.0.1:{port}/";
         var opts = Options.Create(new FtpServerOptions { HealthEnabled = true, HealthUrl = url });
         var srv = new HealthServer(opts, NullLogger<HealthServer>.Instance);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
