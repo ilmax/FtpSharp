@@ -53,4 +53,11 @@ public sealed class FtpServerOptions
     public int ControlReadTimeoutMs { get; init; } = 0;
     /// <summary>Optional per-transfer data rate limit in bytes per second. 0 disables throttling.</summary>
     public int DataRateLimitBytesPerSec { get; set; } = 0;
+
+    // Health endpoint configuration (optional)
+    /// <summary>Enable the lightweight HTTP health endpoint.</summary>
+    public bool HealthEnabled { get; init; } = false;
+
+    /// <summary>HTTP listener prefix for health endpoint, e.g., "http://127.0.0.1:8080/".</summary>
+    public string HealthUrl { get; init; } = "http://127.0.0.1:8080/";
 }
