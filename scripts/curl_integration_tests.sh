@@ -246,7 +246,14 @@ cmp "$TMPDIR/big2.bin" "$TMPDIR/big2.dl" || { echo "[error] Resumed upload conte
 # End extended checks
 
 # Explicit FTPS happy path (AUTH TLS, PBSZ 0, PROT P) if enabled
-if [[ "${FTP_FTPSERVER__FTPSEXPLICITENABLED}" == "true" ]]; then
+# When running against an external server (Docker), default to skipping unless TEST_FTPS_EXPLICIT=true is set.
+DO_FTPS_EXPLICIT="false"
+if [[ "$EXTERNAL_SERVER" != "true" ]]; then
+  DO_FTPS_EXPLICIT="${FTP_FTPSERVER__FTPSEXPLICITENABLED:-true}"
+else
+  DO_FTPS_EXPLICIT="${TEST_FTPS_EXPLICIT:-false}"
+fi
+if [[ "$DO_FTPS_EXPLICIT" == "true" ]]; then
   step "Explicit FTPS AUTH TLS + PBSZ 0 + PROT P + simple LIST"
   # curl --ftp-ssl-reqd enforces TLS on control; --insecure to accept self-signed
   if ! curl -sS --ftp-ssl-reqd --insecure -v "${AUTH[@]}" "$FTP_URL/testdir/" --quote "PBSZ 0" --quote "PROT P" -o /dev/null 2>"$TMPDIR/ftps_explicit.log"; then
