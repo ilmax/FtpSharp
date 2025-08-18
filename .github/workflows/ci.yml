@@ -21,7 +21,8 @@ jobs:
     outputs:
       semver: ${{ steps.gitversion.outputs.semVer }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install GitVersion
@@ -31,7 +32,8 @@ jobs:
         uses: GitTools/actions/gitversion/execute@v4.1.0
       - name: Echo version
         run: echo "SemVer=${{ steps.gitversion.outputs.semVer }}"
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
       - name: Restore
@@ -60,18 +62,21 @@ jobs:
     needs: build-test
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v3
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Compute lowercase image repository
         shell: bash
         run: echo "IMAGE_REPO_LC=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
-      - uses: docker/build-push-action@v6
+      - name: Build and (conditionally) push Docker image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -89,8 +94,10 @@ jobs:
       matrix:
         storage: [FileSystem, InMemory]
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build Docker image (load to local)
         uses: docker/build-push-action@v6
         with:
@@ -161,19 +168,21 @@ jobs:
       matrix:
         storage: [FileSystem, InMemory]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Restore
+      - name: Restore .NET packages
         run: dotnet restore FtpServer.sln
-      - name: Build
+      - name: Build app (Release)
         run: dotnet build FtpServer.App/FtpServer.App.csproj --configuration Release --no-restore
-      - name: Run curl-based integration tests
+      - name: Run curl-based integration tests script
         env:
           PORT: 2121
           PASV_START: 49152
