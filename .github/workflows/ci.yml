@@ -114,6 +114,7 @@ jobs:
           docker run -d --name ftpserver-test \
             -e FTP_FtpServer__Port=21 \
             -e FTP_FtpServer__ListenAddress=0.0.0.0 \
+            -e FTP_FtpServer__PassivePublicIp=127.0.0.1 \
             -e FTP_FtpServer__PassivePortRangeStart=49152 \
             -e FTP_FtpServer__PassivePortRangeEnd=49162 \
             -e FTP_FtpServer__Authenticator=Basic \

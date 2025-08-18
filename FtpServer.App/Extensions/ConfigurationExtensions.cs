@@ -55,6 +55,6 @@ public static class ConfigurationExtensions
             Set("FtpServer:TlsCertPassword", pr.GetValueForOption(tlsCertPassword));
             var ss = pr.GetValueForOption(tlsSelfSigned); if (ss is not null) Set("FtpServer:TlsSelfSigned", ss.Value ? "true" : "false");
         });
-    return cmd;
+        return cmd;
     }
 }
