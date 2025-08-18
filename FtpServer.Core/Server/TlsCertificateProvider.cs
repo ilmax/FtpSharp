@@ -15,8 +15,8 @@ public sealed class TlsCertificateProvider
         if (!string.IsNullOrWhiteSpace(opt.TlsCertPath) && File.Exists(opt.TlsCertPath))
         {
             _cached = string.IsNullOrEmpty(opt.TlsCertPassword)
-                ? new X509Certificate2(opt.TlsCertPath)
-                : new X509Certificate2(opt.TlsCertPath, opt.TlsCertPassword);
+                ? X509CertificateLoader.LoadPkcs12FromFile(opt.TlsCertPath!, ReadOnlySpan<char>.Empty)
+                : X509CertificateLoader.LoadPkcs12FromFile(opt.TlsCertPath!, opt.TlsCertPassword.AsSpan());
             return _cached;
         }
         if (!opt.TlsSelfSigned)
@@ -29,8 +29,8 @@ public sealed class TlsCertificateProvider
         san.AddDnsName("localhost");
         san.AddIpAddress(System.Net.IPAddress.Loopback);
         req.CertificateExtensions.Add(san.Build());
-        var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        _cached = cert;
+    var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+    _cached = cert;
         return _cached;
     }
 }
