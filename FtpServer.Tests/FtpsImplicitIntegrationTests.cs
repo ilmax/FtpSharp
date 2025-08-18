@@ -98,12 +98,12 @@ public class FtpsImplicitIntegrationTests
         }
     }
 
-    private sealed class DummyAuthFactory : FtpServer.Core.Abstractions.IAuthenticatorFactory
+    private sealed class DummyAuthFactory : Core.Abstractions.IAuthenticatorFactory
     {
-        public FtpServer.Core.Abstractions.IAuthenticator Create(string name) => new FtpServer.Core.InMemory.InMemoryAuthenticator();
+        public Core.Abstractions.IAuthenticator Create(string name) => new Core.InMemory.InMemoryAuthenticator();
     }
-    private sealed class DummyStoreFactory : FtpServer.Core.Abstractions.IStorageProviderFactory
+    private sealed class DummyStoreFactory : Core.Abstractions.IStorageProviderFactory
     {
-        public FtpServer.Core.Abstractions.IStorageProvider Create(string name) => new FtpServer.Core.InMemory.InMemoryStorageProvider();
+        public Core.Abstractions.IStorageProvider Create(string name) => new Core.InMemory.InMemoryStorageProvider();
     }
 }

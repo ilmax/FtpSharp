@@ -16,7 +16,7 @@ public class FtpServerHostTests
     }
     private sealed class DummyStoreFactory : IStorageProviderFactory
     {
-        public Core.Abstractions.IStorageProvider Create(string name) => new Core.InMemory.InMemoryStorageProvider();
+        public IStorageProvider Create(string name) => new Core.InMemory.InMemoryStorageProvider();
     }
 
     [Fact]

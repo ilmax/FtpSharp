@@ -13,11 +13,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddFtpServerCore(this IServiceCollection services)
     {
         services.AddSingleton<InMemoryAuthenticator>();
-        services.AddSingleton<FtpServer.Core.Basic.BasicAuthenticator>();
+        services.AddSingleton<Core.Basic.BasicAuthenticator>();
         services.AddSingleton<InMemoryStorageProvider>();
         services.AddSingleton<FileSystemStorageProvider>();
-        services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.PluginRegistry>();
-        services.AddSingleton<IStorageProviderFactory, FtpServer.Core.Plugins.PluginRegistry>();
+        services.AddSingleton<IAuthenticatorFactory, Core.Plugins.PluginRegistry>();
+        services.AddSingleton<IStorageProviderFactory, Core.Plugins.PluginRegistry>();
         services.AddSingleton<FtpServerHost>();
         services.AddSingleton<PassivePortPool>();
         services.AddSingleton<TlsCertificateProvider>();
@@ -31,7 +31,7 @@ public static class ServiceCollectionExtensions
             .WithMetrics(metrics =>
             {
                 metrics
-                    .AddMeter(FtpServer.Core.Observability.Metrics.MeterName)
+                    .AddMeter(Core.Observability.Metrics.MeterName)
                     .AddAspNetCoreInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddPrometheusExporter();

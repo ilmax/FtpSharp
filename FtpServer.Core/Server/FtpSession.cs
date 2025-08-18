@@ -31,7 +31,7 @@ public sealed class FtpSession : IFtpSessionContext
     private PassiveLease? _pasvLease;
     private char _type = 'I'; // I=binary, A=ascii
     public char TransferType { get => _type; set => _type = value; }
-    private System.Net.IPEndPoint? _activeEndpoint;
+    private IPEndPoint? _activeEndpoint;
     private long _restartOffset;
     private Stream? _initialControlStream;
     internal long RestartOffset { get => _restartOffset; set => _restartOffset = value; }
@@ -99,7 +99,7 @@ public sealed class FtpSession : IFtpSessionContext
     public string? PendingUser { get => _pendingUser; set => _pendingUser = value; }
     public bool ShouldQuit { get; set; }
     public string? PendingRenameFrom { get => _pendingRenameFrom; set => _pendingRenameFrom = value; }
-    public System.Net.IPEndPoint? ActiveEndpoint { get => _activeEndpoint; set => _activeEndpoint = value; }
+    public IPEndPoint? ActiveEndpoint { get => _activeEndpoint; set => _activeEndpoint = value; }
 
 
     // Overload to supply an already-wrapped control stream (e.g., implicit FTPS)
@@ -218,7 +218,7 @@ public sealed class FtpSession : IFtpSessionContext
             try
             {
                 // Bind to all interfaces for container/NAT friendliness
-                var l = new TcpListener(System.Net.IPAddress.Any, p);
+                var l = new TcpListener(IPAddress.Any, p);
                 l.Start();
                 _pasvListener = l;
                 string ip = GetPassiveAdvertisedIp();
