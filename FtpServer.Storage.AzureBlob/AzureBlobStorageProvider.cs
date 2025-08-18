@@ -17,8 +17,16 @@ public sealed class AzureBlobStorageProvider : IStorageProvider
     public AzureBlobStorageProvider(IOptions<AzureBlobStorageOptions> options)
     {
         var o = options.Value;
-        var cred = new DefaultAzureCredential();
-        var service = new BlobServiceClient(new Uri(o.AccountUrl), cred);
+        BlobServiceClient service;
+        if (!string.IsNullOrWhiteSpace(o.ConnectionString))
+        {
+            service = new BlobServiceClient(o.ConnectionString);
+        }
+        else
+        {
+            var cred = new DefaultAzureCredential();
+            service = new BlobServiceClient(new Uri(o.AccountUrl), cred);
+        }
         _container = service.GetBlobContainerClient(o.Container);
         _prefix = (o.Prefix ?? string.Empty).Trim('/');
     }
