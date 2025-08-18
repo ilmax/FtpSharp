@@ -43,7 +43,7 @@ jobs:
       - name: Test with coverage
         run: dotnet test FtpServer.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
       - name: Report coverage summary
-        uses: danielpalme/ReportGenerator-GitHub-Action@5.3.10
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.4.12
         with:
           reports: 'FtpServer.Tests/TestResults/**/coverage.cobertura.xml'
           targetdir: 'coverage-report'
