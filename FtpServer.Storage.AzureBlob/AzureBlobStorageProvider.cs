@@ -17,8 +17,19 @@ public sealed class AzureBlobStorageProvider : IStorageProvider
     public AzureBlobStorageProvider(IOptions<AzureBlobStorageOptions> options)
     {
         var o = options.Value;
+        // Validate options: Either ConnectionString must be set, or AccountUrl must be provided. Container is always required.
+        if (string.IsNullOrWhiteSpace(o.Container))
+        {
+            throw new ArgumentException("AzureBlobStorageOptions.Container is required.");
+        }
+        bool hasConnStr = !string.IsNullOrWhiteSpace(o.ConnectionString);
+        bool hasAccountUrl = !string.IsNullOrWhiteSpace(o.AccountUrl);
+        if (!hasConnStr && !hasAccountUrl)
+        {
+            throw new ArgumentException("Either AzureBlobStorageOptions.ConnectionString or AccountUrl must be provided.");
+        }
         BlobServiceClient service;
-        if (!string.IsNullOrWhiteSpace(o.ConnectionString))
+        if (hasConnStr)
         {
             service = new BlobServiceClient(o.ConnectionString);
         }
