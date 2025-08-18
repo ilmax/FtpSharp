@@ -1,6 +1,7 @@
 using System.Text;
 using FtpServer.Core.Protocol;
 using FtpServer.Core.Server.Commands;
+using FtpServer.Core.Server.Commands.Handlers;
 
 namespace FtpServer.Tests;
 

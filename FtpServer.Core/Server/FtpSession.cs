@@ -9,6 +9,7 @@ using FtpServer.Core.Protocol;
 using FtpServer.Core.Server.Commands;
 using Microsoft.Extensions.Options;
 using System.Net;
+using FtpServer.Core.Server.Commands.Handlers;
 
 namespace FtpServer.Core.Server;
 

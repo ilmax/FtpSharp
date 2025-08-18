@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using FtpServer.Core.Abstractions;
 
 namespace FtpServer.Core.InMemory;
@@ -11,7 +10,7 @@ namespace FtpServer.Core.InMemory;
 public sealed class InMemoryStorageProvider : IStorageProvider
 {
     private readonly ConcurrentDictionary<string, Node> _nodes = new(StringComparer.Ordinal);
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
 
     private abstract record Node;
     private sealed record DirNode(Dictionary<string, string> Children) : Node;
@@ -45,9 +44,9 @@ public sealed class InMemoryStorageProvider : IStorageProvider
                 if (_nodes.TryGetValue(full, out var child))
                 {
                     if (child is DirNode)
-                        list.Add(new FileSystemEntry(name, full, true, null));
+                        list.Add(new FileSystemEntry(name, true, null));
                     else if (child is FileNode f)
-                        list.Add(new FileSystemEntry(name, full, false, f.Content.Length));
+                        list.Add(new FileSystemEntry(name, false, f.Content.Length));
                 }
             }
             return Task.FromResult<IReadOnlyList<FileSystemEntry>>(list);
@@ -103,9 +102,9 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             if (_nodes.TryGetValue(path, out var node))
             {
                 if (node is DirNode)
-                    return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, true, null));
+                    return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), true, null));
                 if (node is FileNode f)
-                    return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), path, false, f.Content.Length));
+                    return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Name(path), false, f.Content.Length));
             }
             return Task.FromResult<FileSystemEntry?>(null);
         }
