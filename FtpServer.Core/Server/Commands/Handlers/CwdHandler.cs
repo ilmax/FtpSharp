@@ -10,7 +10,7 @@ internal sealed class CwdHandler : IFtpCommandHandler
     public string Command => "CWD";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         var entry = await _storage.GetEntryAsync(path, ct);
         if (entry is null || !entry.IsDirectory)
         {

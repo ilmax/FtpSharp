@@ -40,7 +40,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
                 return Task.FromResult<IReadOnlyList<FileSystemEntry>>(Array.Empty<FileSystemEntry>());
 
             var list = new List<FileSystemEntry>(dir.Children.Count);
-            foreach (var (name, full) in dir.Children)
+            foreach ((string name, string full) in dir.Children)
             {
                 if (_nodes.TryGetValue(full, out var child))
                 {
@@ -61,7 +61,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         {
             EnsureParentDirLocked(path);
             _nodes.TryAdd(path, new DirNode(new()));
-            var parent = Parent(path);
+            string parent = Parent(path);
             if (_nodes[parent] is DirNode pd)
             {
                 pd.Children[Name(path)] = path;
@@ -127,9 +127,9 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             _nodes.TryRemove(fromPath, out _);
 
             // Update parent directory child listings
-            var fromParent = Parent(fromPath);
-            var toParent = Parent(toPath);
-            var name = Name(toPath);
+            string fromParent = Parent(fromPath);
+            string toParent = Parent(toPath);
+            string name = Name(toPath);
             if (_nodes.TryGetValue(fromParent, out var fp) && fp is DirNode fpd)
             {
                 fpd.Children.Remove(Name(fromPath));
@@ -154,10 +154,10 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             }
         }
         if (snapshot is null) yield break;
-        var data = snapshot;
+        byte[] data = snapshot;
         for (int i = 0; i < data.Length; i += bufferSize)
         {
-            var len = Math.Min(bufferSize, data.Length - i);
+            int len = Math.Min(bufferSize, data.Length - i);
             yield return new ReadOnlyMemory<byte>(data, i, len);
             await Task.Yield();
             ct.ThrowIfCancellationRequested();
@@ -176,10 +176,10 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             }
         }
         if (snapshot is null) yield break;
-        var start = (int)Math.Clamp(offset, 0, snapshot.Length);
+        int start = (int)Math.Clamp(offset, 0, snapshot.Length);
         for (int i = start; i < snapshot.Length; i += bufferSize)
         {
-            var len = Math.Min(bufferSize, snapshot.Length - i);
+            int len = Math.Min(bufferSize, snapshot.Length - i);
             yield return new ReadOnlyMemory<byte>(snapshot, i, len);
             await Task.Yield(); ct.ThrowIfCancellationRequested();
         }
@@ -196,12 +196,12 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             else
                 await ms.WriteAsync(chunk.ToArray(), ct);
         }
-        var data = ms.ToArray();
+        byte[] data = ms.ToArray();
         lock (_gate)
         {
             EnsureParentDirLocked(path);
             _nodes[path] = new FileNode(data);
-            var parent = Parent(path);
+            string parent = Parent(path);
             if (_nodes[parent] is DirNode pd)
                 pd.Children[Name(path)] = path;
         }
@@ -223,12 +223,12 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             else
                 await ms.WriteAsync(chunk.ToArray(), ct);
         }
-        var data = ms.ToArray();
+        byte[] data = ms.ToArray();
         lock (_gate)
         {
             EnsureParentDirLocked(path);
             _nodes[path] = new FileNode(data);
-            var parent = Parent(path);
+            string parent = Parent(path);
             if (_nodes[parent] is DirNode pd)
                 pd.Children[Name(path)] = path;
         }
@@ -242,7 +242,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         {
             if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
             {
-                var keep = (int)Math.Clamp(truncateTo, 0, f.Content.Length);
+                int keep = (int)Math.Clamp(truncateTo, 0, f.Content.Length);
                 ms.Write(f.Content, 0, keep);
             }
         }
@@ -253,12 +253,12 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             else
                 await ms.WriteAsync(chunk.ToArray(), ct);
         }
-        var data = ms.ToArray();
+        byte[] data = ms.ToArray();
         lock (_gate)
         {
             EnsureParentDirLocked(path);
             _nodes[path] = new FileNode(data);
-            var parent = Parent(path);
+            string parent = Parent(path);
             if (_nodes[parent] is DirNode pd)
                 pd.Children[Name(path)] = path;
         }
@@ -274,24 +274,24 @@ public sealed class InMemoryStorageProvider : IStorageProvider
 
     private string Parent(string p)
     {
-        var i = p.LastIndexOf('/');
+        int i = p.LastIndexOf('/');
         return i <= 0 ? "/" : p.Substring(0, i);
     }
 
     private string Name(string p)
     {
-        var i = p.LastIndexOf('/');
+        int i = p.LastIndexOf('/');
         return i < 0 ? p : p[(i + 1)..];
     }
 
     private void EnsureParentDirLocked(string path)
     {
         // assumes _gate is held
-        var parent = Parent(path);
+        string parent = Parent(path);
         if (_nodes.ContainsKey(parent)) return;
         // create chain of missing directories
         var stack = new Stack<string>();
-        var cur = parent;
+        string cur = parent;
         while (cur != "/" && !_nodes.ContainsKey(cur))
         {
             stack.Push(cur);
@@ -302,9 +302,9 @@ public sealed class InMemoryStorageProvider : IStorageProvider
             _nodes.TryAdd("/", new DirNode(new()));
         while (stack.Count > 0)
         {
-            var dir = stack.Pop();
+            string dir = stack.Pop();
             _nodes.TryAdd(dir, new DirNode(new()));
-            var p = Parent(dir);
+            string p = Parent(dir);
             if (_nodes[p] is DirNode pd)
                 pd.Children[Name(dir)] = dir;
         }
@@ -320,13 +320,13 @@ public sealed class InMemoryStorageProvider : IStorageProvider
                 throw new IOException("Directory not empty");
             if (recursive)
             {
-                foreach (var (_, full) in d.Children.ToArray())
+                foreach ((string _, string full) in d.Children.ToArray())
                 {
                     DeleteLocked(full, true);
                 }
             }
         }
-        var parent = Parent(path);
+        string parent = Parent(path);
         if (_nodes.TryGetValue(parent, out var pnode) && pnode is DirNode pd)
         {
             pd.Children.Remove(Name(path));

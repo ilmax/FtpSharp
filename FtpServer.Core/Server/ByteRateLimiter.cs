@@ -33,8 +33,8 @@ internal sealed class ByteRateLimiter
                 consumed = _consumed;
             }
             if (elapsed <= 0) break;
-            var desiredSeconds = consumed / (double)_limitBytesPerSec;
-            var deltaMs = (int)Math.Ceiling((desiredSeconds - elapsed) * 1000);
+            double desiredSeconds = consumed / (double)_limitBytesPerSec;
+            int deltaMs = (int)Math.Ceiling((desiredSeconds - elapsed) * 1000);
             if (deltaMs <= 0) break;
             await Task.Delay(Math.Min(deltaMs, 5000), ct).ConfigureAwait(false);
         }

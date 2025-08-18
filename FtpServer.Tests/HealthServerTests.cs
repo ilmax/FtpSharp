@@ -18,14 +18,14 @@ public class HealthServerTests
             listener.Start();
             port = ((IPEndPoint)listener.LocalEndpoint).Port;
         }
-        var url = $"http://127.0.0.1:{port}/";
+        string url = $"http://127.0.0.1:{port}/";
         var opts = Options.Create(new FtpServerOptions { HealthEnabled = true, HealthUrl = url });
         var srv = new HealthServer(opts, NullLogger<HealthServer>.Instance);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await srv.StartAsync(cts.Token);
 
         using var http = new HttpClient();
-        var s = await http.GetStringAsync(url + "health");
+        string s = await http.GetStringAsync(url + "health");
         Assert.Equal("OK", s);
 
         await srv.DisposeAsync();

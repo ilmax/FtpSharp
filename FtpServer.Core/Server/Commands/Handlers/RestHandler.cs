@@ -9,7 +9,7 @@ internal sealed class RestHandler : IFtpCommandHandler
     public string Command => "REST";
     public Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        if (!long.TryParse(parsed.Argument, out var offset) || offset < 0)
+        if (!long.TryParse(parsed.Argument, out long offset) || offset < 0)
             return writer.WriteLineAsync("501 Syntax error in parameters or arguments");
         _session.RestartOffset = offset;
         return writer.WriteLineAsync($"350 Restarting at {offset}. Send STORE or RETR to resume.");

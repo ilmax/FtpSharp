@@ -20,7 +20,7 @@ internal sealed class AppeHandler : IFtpCommandHandler
     public string Command => "APPE";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         var entry = await _storage.GetEntryAsync(path, ct);
         if (entry is not null && entry.IsDirectory)
         {
@@ -37,32 +37,32 @@ internal sealed class AppeHandler : IFtpCommandHandler
             var token = xferCts.Token;
 
             // Build content enumerable, appending; storage layer handles REST truncate when needed
-            var sid = _session.SessionId;
+            string sid = _session.SessionId;
             async IAsyncEnumerable<ReadOnlyMemory<byte>> Content([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
-                var offset = _session.RestartOffset;
+                long offset = _session.RestartOffset;
                 _session.RestartOffset = 0; // consume
-                long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
+                long sent = 0; var sw = new System.Diagnostics.Stopwatch(); long limit = (long)_options.Value.DataRateLimitBytesPerSec;
 
-                var buffer = new byte[8192];
+                byte[] buffer = new byte[8192];
                 int read;
                 while ((read = await ds.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
                 {
                     if (context.TransferType == 'A')
                     {
-                        var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
-                        var data = System.Text.Encoding.ASCII.GetBytes(text);
+                        string text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
+                        byte[] data = System.Text.Encoding.ASCII.GetBytes(text);
                         yield return data; sent += data.Length; Observability.Metrics.BytesReceived.Add(data.Length); Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
-                        var data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        byte[] data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
                         yield return data; sent += data.Length; Observability.Metrics.BytesReceived.Add(data.Length); Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }
             }
 
-            var restOffset = _session.RestartOffset; // consumed above in Content()
+            long restOffset = _session.RestartOffset; // consumed above in Content()
             if (restOffset > 0)
                 await _storage.WriteTruncateThenAppendAsync(path, restOffset, Content(token), token);
             else

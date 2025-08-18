@@ -39,7 +39,7 @@ public class FtpServerHostTests
         await client.ConnectAsync(IPAddress.Loopback, opts.Value.Port);
         var s = client.GetStream();
         using var reader = new StreamReader(s, System.Text.Encoding.ASCII, false, 1024, true);
-        var greet = await reader.ReadLineAsync();
+        string? greet = await reader.ReadLineAsync();
         Assert.StartsWith("220", greet);
 
         await host.DisposeAsync();
@@ -49,7 +49,7 @@ public class FtpServerHostTests
     {
         var l = new TcpListener(IPAddress.Loopback, 0);
         l.Start();
-        var p = ((IPEndPoint)l.LocalEndpoint).Port;
+        int p = ((IPEndPoint)l.LocalEndpoint).Port;
         l.Stop();
         return p;
     }

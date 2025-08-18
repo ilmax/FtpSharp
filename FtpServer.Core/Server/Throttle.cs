@@ -8,14 +8,14 @@ internal static class Throttle
     {
         if (limitBytesPerSec <= 0) return sentBytes;
         if (!sw.IsRunning) sw.Start();
-        var elapsed = sw.Elapsed.TotalSeconds;
+        double elapsed = sw.Elapsed.TotalSeconds;
         if (elapsed <= 0) return sentBytes;
-        var rate = sentBytes / elapsed;
+        double rate = sentBytes / elapsed;
         if (rate > limitBytesPerSec)
         {
             // Sleep proportionally to bring rate below limit
-            var desiredSeconds = sentBytes / (double)limitBytesPerSec;
-            var sleepMs = Math.Clamp((int)((desiredSeconds - elapsed) * 1000), 1, 5000);
+            double desiredSeconds = sentBytes / (double)limitBytesPerSec;
+            int sleepMs = Math.Clamp((int)((desiredSeconds - elapsed) * 1000), 1, 5000);
             await Task.Delay(sleepMs, ct).ConfigureAwait(false);
         }
         return sentBytes;

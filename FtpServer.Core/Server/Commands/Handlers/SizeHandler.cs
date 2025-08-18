@@ -10,7 +10,7 @@ internal sealed class SizeHandler : IFtpCommandHandler
     public string Command => "SIZE";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         var entry = await _storage.GetEntryAsync(path, ct);
         if (entry is null)
         {
@@ -22,7 +22,7 @@ internal sealed class SizeHandler : IFtpCommandHandler
             await writer.WriteLineAsync("550 Not a plain file");
             return;
         }
-        var size = await _storage.GetSizeAsync(path, ct);
+        long size = await _storage.GetSizeAsync(path, ct);
         await writer.WriteLineAsync($"213 {size}");
     }
 }

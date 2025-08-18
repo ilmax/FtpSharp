@@ -31,7 +31,7 @@ public class FtpsHandlerUnitTests
         using var ms = new MemoryStream();
         using var w = new StreamWriter(ms) { AutoFlush = true, NewLine = "\r\n" };
         await h.HandleAsync(ctx, new ParsedCommand("AUTH", "TLS"), w, CancellationToken.None);
-        var resp = Encoding.ASCII.GetString(ms.ToArray());
+        string resp = Encoding.ASCII.GetString(ms.ToArray());
         Assert.True(ctx.IsControlTls);
         Assert.Contains("234", resp);
     }
@@ -45,7 +45,7 @@ public class FtpsHandlerUnitTests
         using var w = new StreamWriter(ms) { AutoFlush = true, NewLine = "\r\n" };
         await h.HandleAsync(ctx, new ParsedCommand("PBSZ", "1"), w, CancellationToken.None);
         await h.HandleAsync(ctx, new ParsedCommand("PBSZ", "0"), w, CancellationToken.None);
-        var resp = Encoding.ASCII.GetString(ms.ToArray());
+        string resp = Encoding.ASCII.GetString(ms.ToArray());
         Assert.Contains("501", resp);
         Assert.Contains("200 PBSZ=0", resp);
     }
@@ -62,7 +62,7 @@ public class FtpsHandlerUnitTests
         await h.HandleAsync(ctx, new ParsedCommand("PROT", "C"), w, CancellationToken.None);
         Assert.Equal('C', ctx.DataProtectionLevel);
         await h.HandleAsync(ctx, new ParsedCommand("PROT", "X"), w, CancellationToken.None);
-        var resp = Encoding.ASCII.GetString(ms.ToArray());
+        string resp = Encoding.ASCII.GetString(ms.ToArray());
         Assert.Contains("200 PROT set to P", resp);
         Assert.Contains("200 PROT set to C", resp);
         Assert.Contains("504", resp);

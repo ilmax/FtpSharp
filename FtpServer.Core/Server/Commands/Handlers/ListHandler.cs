@@ -36,13 +36,13 @@ internal sealed class ListHandler : IFtpCommandHandler
 
     private static string FormatUnixListLine(FileSystemEntry e)
     {
-        var perms = e.IsDirectory ? 'd' : '-';
-        var rights = "rwxr-xr-x";
-        var links = 1;
-        var owner = "owner";
-        var group = "group";
-        var size = e.Length ?? 0;
-        var date = DateTimeOffset.Now.ToString("MMM dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        char perms = e.IsDirectory ? 'd' : '-';
+        string rights = "rwxr-xr-x";
+        int links = 1;
+        string owner = "owner";
+        string group = "group";
+        long size = e.Length ?? 0;
+        string date = DateTimeOffset.Now.ToString("MMM dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         return $"{perms}{rights} {links,3} {owner,5} {group,5} {size,8} {date} {e.Name}";
     }
 }

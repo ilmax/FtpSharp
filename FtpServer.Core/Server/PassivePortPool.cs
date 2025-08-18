@@ -16,16 +16,16 @@ public sealed class PassivePortPool : IAsyncDisposable
 
     public Task<PassiveLease> LeaseAsync(CancellationToken ct)
     {
-        var start = _options.Value.PassivePortRangeStart;
-        var end = _options.Value.PassivePortRangeEnd;
-        var span = Enumerable.Range(start, end - start + 1).ToArray();
+        int start = _options.Value.PassivePortRangeStart;
+        int end = _options.Value.PassivePortRangeEnd;
+        int[] span = Enumerable.Range(start, end - start + 1).ToArray();
         var rng = new Random(unchecked(Environment.TickCount * 7919) ^ Guid.NewGuid().GetHashCode());
         for (int i = span.Length - 1; i > 0; i--)
         {
             int j = rng.Next(i + 1);
             (span[i], span[j]) = (span[j], span[i]);
         }
-        foreach (var p in span)
+        foreach (int p in span)
         {
             ct.ThrowIfCancellationRequested();
             try

@@ -17,7 +17,7 @@ internal sealed class StorHandler : IFtpCommandHandler
     public string Command => "STOR";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         var entry = await _storage.GetEntryAsync(path, ct);
         if (entry is not null && entry.IsDirectory)
         {
@@ -32,25 +32,25 @@ internal sealed class StorHandler : IFtpCommandHandler
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
-            var restOffset = (context as FtpSession)!.RestartOffset;
+            long restOffset = (context as FtpSession)!.RestartOffset;
             (context as FtpSession)!.RestartOffset = 0; // consume
-            var sid = (context as FtpSession)!.SessionId;
+            string sid = (context as FtpSession)!.SessionId;
             async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadStream([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
             {
-                long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
-                var buffer = new byte[8192];
+                long sent = 0; var sw = new System.Diagnostics.Stopwatch(); long limit = (long)_options.Value.DataRateLimitBytesPerSec;
+                byte[] buffer = new byte[8192];
                 int read;
                 while ((read = await storStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
                 {
                     if (context.TransferType == 'A')
                     {
-                        var text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
-                        var data = System.Text.Encoding.ASCII.GetBytes(text);
+                        string text = System.Text.Encoding.ASCII.GetString(buffer, 0, read).Replace("\r\n", "\n");
+                        byte[] data = System.Text.Encoding.ASCII.GetBytes(text);
                         yield return data; sent += data.Length; Observability.Metrics.BytesReceived.Add(data.Length); Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                     else
                     {
-                        var data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        byte[] data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
                         yield return data; sent += data.Length; Observability.Metrics.BytesReceived.Add(data.Length); Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }

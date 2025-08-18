@@ -10,7 +10,7 @@ internal sealed class RmdHandler : IFtpCommandHandler
     public string Command => "RMD";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         var entry = await _storage.GetEntryAsync(path, ct);
         if (entry is null)
         {

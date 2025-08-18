@@ -10,7 +10,7 @@ public class FileSystemStorageProviderTests
     [Fact]
     public async Task FileOperations_EndToEnd()
     {
-        var root = Path.Combine(Path.GetTempPath(), "ftpstest-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(Path.GetTempPath(), "ftpstest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
         {
@@ -22,7 +22,7 @@ public class FileSystemStorageProviderTests
 
             static async IAsyncEnumerable<ReadOnlyMemory<byte>> Chunks(params string[] parts)
             {
-                foreach (var p in parts)
+                foreach (string p in parts)
                 {
                     yield return System.Text.Encoding.ASCII.GetBytes(p);
                     await Task.Yield();

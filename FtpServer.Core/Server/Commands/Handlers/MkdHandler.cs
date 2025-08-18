@@ -10,7 +10,7 @@ internal sealed class MkdHandler : IFtpCommandHandler
     public string Command => "MKD";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         if (await _storage.ExistsAsync(path, ct))
         {
             await writer.WriteLineAsync("550 Directory already exists");

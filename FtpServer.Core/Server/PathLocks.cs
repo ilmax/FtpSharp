@@ -94,11 +94,11 @@ internal static class PathLocks
 
     public static async Task<IAsyncDisposable[]> AcquireManyWriteAsync(IEnumerable<string> paths, CancellationToken ct)
     {
-        var ordered = paths.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToArray();
+        string[] ordered = paths.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToArray();
         var leases = new List<IAsyncDisposable>(ordered.Length);
         try
         {
-            foreach (var p in ordered)
+            foreach (string p in ordered)
             {
                 leases.Add(await AcquireWriteAsync(p, ct).ConfigureAwait(false));
             }

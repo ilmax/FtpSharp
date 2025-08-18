@@ -22,12 +22,12 @@ public class ConcurrencyTests
                 using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
                 using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
 
-                var greet = await reader.ReadLineAsync();
+                string? greet = await reader.ReadLineAsync();
                 Assert.StartsWith("220", greet);
                 await writer.WriteLineAsync("USER u"); await reader.ReadLineAsync();
-                await writer.WriteLineAsync("PASS p"); var ok = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("PASS p"); string? ok = await reader.ReadLineAsync();
                 Assert.StartsWith("230", ok);
-                await writer.WriteLineAsync("QUIT"); var bye = await reader.ReadLineAsync();
+                await writer.WriteLineAsync("QUIT"); string? bye = await reader.ReadLineAsync();
                 Assert.StartsWith("221", bye);
             }).ToArray();
 
