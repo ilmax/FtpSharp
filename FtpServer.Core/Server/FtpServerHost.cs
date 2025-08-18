@@ -28,10 +28,10 @@ public sealed class FtpServerHost : IAsyncDisposable
     public FtpServerHost(
         IOptions<FtpServerOptions> options,
         ILogger<FtpServerHost> logger,
-    IAuthenticatorFactory authFactory,
-    IStorageProviderFactory storageFactory,
-    PassivePortPool passivePool,
-    TlsCertificateProvider certProvider)
+        IAuthenticatorFactory authFactory,
+        IStorageProviderFactory storageFactory,
+        PassivePortPool passivePool,
+        TlsCertificateProvider certProvider)
     {
         _options = options;
         _logger = logger;
