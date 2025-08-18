@@ -16,6 +16,7 @@ public sealed class PluginRegistry : IAuthenticatorFactory, IStorageProviderFact
         => name switch
         {
             "InMemory" => _sp.GetRequiredService<InMemory.InMemoryAuthenticator>(),
+            "Basic" => _sp.GetRequiredService<Basic.BasicAuthenticator>(),
             _ => throw new NotSupportedException($"Unknown authenticator '{name}'")
         };
 

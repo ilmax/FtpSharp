@@ -17,6 +17,7 @@ builder.Services.AddOptions<FtpServerOptions>()
     .ValidateDataAnnotations();
 
 builder.Services.AddSingleton<InMemoryAuthenticator>();
+builder.Services.AddSingleton<FtpServer.Core.Basic.BasicAuthenticator>();
 builder.Services.AddSingleton<InMemoryStorageProvider>();
 builder.Services.AddSingleton<FileSystemStorageProvider>();
 builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.PluginRegistry>();
