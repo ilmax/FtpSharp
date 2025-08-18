@@ -60,4 +60,24 @@ public sealed class FtpServerOptions
 
     /// <summary>HTTP listener prefix for health endpoint, e.g., "http://127.0.0.1:8080/".</summary>
     public string HealthUrl { get; init; } = "http://127.0.0.1:8080/";
+
+    // FTPS / TLS
+    /// <summary>Enable explicit FTPS (AUTH TLS).</summary>
+    public bool FtpsExplicitEnabled { get; init; } = false;
+
+    /// <summary>Enable implicit FTPS on a dedicated port (default 990).</summary>
+    public bool FtpsImplicitEnabled { get; init; } = false;
+
+    /// <summary>Port for implicit FTPS listener.</summary>
+    [Range(1, 65535)]
+    public int FtpsImplicitPort { get; init; } = 990;
+
+    /// <summary>Path to a PFX/PKCS#12 certificate file. If not provided and TlsSelfSigned is true, a self-signed cert will be generated.</summary>
+    public string? TlsCertPath { get; init; }
+
+    /// <summary>Password for the PFX file (optional).</summary>
+    public string? TlsCertPassword { get; init; }
+
+    /// <summary>Generate an in-memory self-signed certificate when no cert file is provided.</summary>
+    public bool TlsSelfSigned { get; init; } = true;
 }

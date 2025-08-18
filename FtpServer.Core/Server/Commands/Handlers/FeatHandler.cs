@@ -19,6 +19,9 @@ internal sealed class FeatHandler : IFtpCommandHandler
         await writer.WriteLineAsync(" RNFR RNTO");
         await writer.WriteLineAsync(" REST STREAM");
         await writer.WriteLineAsync(" APPE");
+        await writer.WriteLineAsync(" AUTH TLS");
+        await writer.WriteLineAsync(" PBSZ");
+        await writer.WriteLineAsync(" PROT");
         await writer.WriteLineAsync(" TYPE A;I");
         await writer.WriteLineAsync(" MODE S");
         await writer.WriteLineAsync(" STRU F");

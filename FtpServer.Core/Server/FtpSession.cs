@@ -32,9 +32,14 @@ public sealed class FtpSession : IFtpSessionContext
     public char TransferType { get => _type; set => _type = value; }
     private System.Net.IPEndPoint? _activeEndpoint;
     private long _restartOffset;
+    private Stream? _initialControlStream;
     internal long RestartOffset { get => _restartOffset; set => _restartOffset = value; }
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     public string SessionId => _sessionId;
+    private bool _controlTls;
+    public bool IsControlTls { get => _controlTls; set => _controlTls = value; }
+    private char _prot = 'C';
+    public char DataProtectionLevel { get => _prot; set => _prot = value; }
 
     public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool)
     {
@@ -76,6 +81,9 @@ public sealed class FtpSession : IFtpSessionContext
             ["MODE"] = new ModeHandler(),
             ["STRU"] = new StruHandler(),
             ["ALLO"] = new AlloHandler(),
+            ["AUTH"] = new AuthTlsHandler(),
+            ["PBSZ"] = new PbszHandler(),
+            ["PROT"] = new ProtHandler(),
         };
     }
 
@@ -92,12 +100,21 @@ public sealed class FtpSession : IFtpSessionContext
     public string? PendingRenameFrom { get => _pendingRenameFrom; set => _pendingRenameFrom = value; }
     public System.Net.IPEndPoint? ActiveEndpoint { get => _activeEndpoint; set => _activeEndpoint = value; }
 
+
+    // Overload to supply an already-wrapped control stream (e.g., implicit FTPS)
+    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool, Stream initialControlStream, bool isTls)
+        : this(client, auth, storage, options, passivePool)
+    {
+        _initialControlStream = initialControlStream;
+        _controlTls = isTls;
+    }
     public async Task RunAsync(CancellationToken ct)
     {
         using var client = _client;
         using var stream = client.GetStream();
-        var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
-        var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, true);
+        Stream controlStream = _initialControlStream ?? stream;
+        var writer = new StreamWriter(controlStream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+        var reader = new StreamReader(controlStream, Encoding.ASCII, false, 1024, true);
 
         await writer.WriteLineAsync("220 Service ready");
         try
@@ -129,6 +146,12 @@ public sealed class FtpSession : IFtpSessionContext
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     await handler.HandleAsync(this, parsed, writer, ct);
+                    if (parsed.Command.Equals("AUTH", StringComparison.OrdinalIgnoreCase) && _controlTls)
+                    {
+                        controlStream = await UpgradeControlToTlsAsync(ct);
+                        writer = new StreamWriter(controlStream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
+                        reader = new StreamReader(controlStream, Encoding.ASCII, false, 1024, true);
+                    }
                     sw.Stop();
                     Metrics.CommandDurationMs.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("command", parsed.Command));
                     if (ShouldQuit) return;
@@ -145,6 +168,15 @@ public sealed class FtpSession : IFtpSessionContext
             _pasvListener = null;
             _pasvLease = null;
         }
+    }
+
+    public async Task<Stream> UpgradeControlToTlsAsync(CancellationToken ct)
+    {
+        var certProvider = new TlsCertificateProvider();
+        var cert = certProvider.GetOrCreate(_options);
+        var ssl = new System.Net.Security.SslStream(_client.GetStream(), leaveInnerStreamOpen: false);
+        await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13, checkCertificateRevocation: false);
+        return ssl;
     }
 
     public PassiveEndpoint EnterPassiveMode()
@@ -204,7 +236,15 @@ public sealed class FtpSession : IFtpSessionContext
                 _pasvLease = null;
             }
             Metrics.SessionActiveTransfers.Add(1, new KeyValuePair<string, object?>("session_id", _sessionId));
-            return new SessionTaggedStream(client.GetStream(), () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
+            Stream ds = client.GetStream();
+            if (_prot == 'P')
+            {
+                var cert = new TlsCertificateProvider().GetOrCreate(_options);
+                var ssl = new System.Net.Security.SslStream(ds, leaveInnerStreamOpen: false);
+                await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13, checkCertificateRevocation: false);
+                ds = ssl;
+            }
+            return new SessionTaggedStream(ds, () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }
         if (_activeEndpoint is not null)
         {
@@ -212,7 +252,15 @@ public sealed class FtpSession : IFtpSessionContext
             await client.ConnectAsync(_activeEndpoint, tok);
             _activeEndpoint = null;
             Metrics.SessionActiveTransfers.Add(1, new KeyValuePair<string, object?>("session_id", _sessionId));
-            return new SessionTaggedStream(client.GetStream(), () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
+            Stream ds = client.GetStream();
+            if (_prot == 'P')
+            {
+                var cert = new TlsCertificateProvider().GetOrCreate(_options);
+                var ssl = new System.Net.Security.SslStream(ds, leaveInnerStreamOpen: false);
+                await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13, checkCertificateRevocation: false);
+                ds = ssl;
+            }
+            return new SessionTaggedStream(ds, () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }
         throw new IOException("425 Can't open data connection");
     }

@@ -11,7 +11,7 @@ internal sealed class HelpHandler : IFtpCommandHandler
         async Task Write()
         {
             await writer.WriteLineAsync("214-The following commands are recognized.");
-            await writer.WriteLineAsync(" USER PASS SYST FEAT PWD CWD CDUP TYPE PASV EPSV PORT EPRT LIST NLST RETR STOR DELE MKD RMD SIZE RNFR RNTO STAT HELP QUIT");
+            await writer.WriteLineAsync(" USER PASS SYST FEAT PWD CWD CDUP TYPE PASV EPSV PORT EPRT LIST NLST RETR STOR DELE MKD RMD SIZE RNFR RNTO STAT HELP QUIT AUTH PBSZ PROT");
             await writer.WriteLineAsync("214 Help OK.");
         }
     }

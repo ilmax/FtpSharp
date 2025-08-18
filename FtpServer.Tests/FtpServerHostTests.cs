@@ -30,7 +30,8 @@ public class FtpServerHostTests
             PassivePortRangeEnd = 58030,
         });
         var pool = new PassivePortPool(opts);
-        var host = new FtpServerHost(opts, NullLogger<FtpServerHost>.Instance, new DummyAuthFactory(), new DummyStoreFactory(), pool);
+        var cert = new TlsCertificateProvider();
+        var host = new FtpServerHost(opts, NullLogger<FtpServerHost>.Instance, new DummyAuthFactory(), new DummyStoreFactory(), pool, cert);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await host.StartAsync(cts.Token);
 
