@@ -40,4 +40,4 @@ public interface IStorageProvider
     Task WriteTruncateThenAppendAsync(string path, long truncateTo, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct);
 }
 
-public sealed record FileSystemEntry(string Name, string FullPath, bool IsDirectory, long? Length);
+public sealed record FileSystemEntry(string Name, bool IsDirectory, long? Length);

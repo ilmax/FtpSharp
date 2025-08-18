@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 using FtpServer.Core.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

@@ -3,7 +3,7 @@ using FtpServer.Core.Configuration;
 using FtpServer.Core.Protocol;
 using Microsoft.Extensions.Options;
 
-namespace FtpServer.Core.Server.Commands;
+namespace FtpServer.Core.Server.Commands.Handlers;
 
 internal sealed class StorHandler : IFtpCommandHandler
 {

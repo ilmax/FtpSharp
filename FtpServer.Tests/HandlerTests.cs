@@ -2,6 +2,7 @@ using System.Text;
 using FtpServer.Core.InMemory;
 using FtpServer.Core.Protocol;
 using FtpServer.Core.Server.Commands;
+using FtpServer.Core.Server.Commands.Handlers;
 
 namespace FtpServer.Tests;
 

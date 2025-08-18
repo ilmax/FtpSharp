@@ -34,13 +34,13 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         foreach (string d in Directory.GetDirectories(phys))
         {
             string name = Path.GetFileName(d);
-            list.Add(new FileSystemEntry(name, CombineLogical(logical, name), true, null));
+            list.Add(new FileSystemEntry(name, true, null));
         }
         foreach (string f in Directory.GetFiles(phys))
         {
             string name = Path.GetFileName(f);
             var info = new FileInfo(f);
-            list.Add(new FileSystemEntry(name, CombineLogical(logical, name), false, info.Length));
+            list.Add(new FileSystemEntry(name, false, info.Length));
         }
         return Task.FromResult<IReadOnlyList<FileSystemEntry>>(list);
     }
@@ -76,11 +76,11 @@ public sealed class FileSystemStorageProvider : IStorageProvider
     {
         (string phys, string logical, _) = Physical(path);
         if (Directory.Exists(phys))
-            return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Path.GetFileName(phys), logical, true, null));
+            return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Path.GetFileName(phys), true, null));
         if (File.Exists(phys))
         {
             var info = new FileInfo(phys);
-            return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Path.GetFileName(phys), logical, false, info.Length));
+            return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Path.GetFileName(phys), false, info.Length));
         }
         return Task.FromResult<FileSystemEntry?>(null);
     }

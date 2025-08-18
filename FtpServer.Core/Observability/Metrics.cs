@@ -5,7 +5,7 @@ namespace FtpServer.Core.Observability;
 public static class Metrics
 {
     public const string MeterName = "FtpServer";
-    public static readonly Meter Meter = new(MeterName, "1.0.0");
+    private static readonly Meter Meter = new(MeterName, "1.0.0");
 
     public static readonly UpDownCounter<long> SessionsActive = Meter.CreateUpDownCounter<long>(
         name: "ftp_sessions_active",

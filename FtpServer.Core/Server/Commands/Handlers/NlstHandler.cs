@@ -2,7 +2,7 @@ using System.Text;
 using FtpServer.Core.Abstractions;
 using FtpServer.Core.Protocol;
 
-namespace FtpServer.Core.Server.Commands;
+namespace FtpServer.Core.Server.Commands.Handlers;
 
 internal sealed class NlstHandler : IFtpCommandHandler
 {
