@@ -94,8 +94,8 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         int read;
         while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
         {
-            // copy to avoid exposing mutable buffer
-            yield return buffer.AsMemory(0, read).ToArray();
+            // Yield a slice of the buffer; consumer must consume before next MoveNext.
+            yield return buffer.AsMemory(0, read);
             await Task.Yield();
             ct.ThrowIfCancellationRequested();
         }
@@ -111,7 +111,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         int read;
         while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
         {
-            yield return buffer.AsMemory(0, read).ToArray();
+            yield return buffer.AsMemory(0, read);
             await Task.Yield();
             ct.ThrowIfCancellationRequested();
         }
@@ -124,10 +124,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         using var fs = new FileStream(phys, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true);
         await foreach (var chunk in content.WithCancellation(ct))
         {
-            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                await fs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-            else
-                await fs.WriteAsync(chunk.ToArray(), ct);
+            await fs.WriteAsync(chunk, ct);
         }
     }
 
@@ -138,10 +135,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider
         using var fs = new FileStream(phys, FileMode.Append, FileAccess.Write, FileShare.None, 8192, useAsync: true);
         await foreach (var chunk in content.WithCancellation(ct))
         {
-            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                await fs.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-            else
-                await fs.WriteAsync(chunk.ToArray(), ct);
+            await fs.WriteAsync(chunk, ct);
         }
     }
 

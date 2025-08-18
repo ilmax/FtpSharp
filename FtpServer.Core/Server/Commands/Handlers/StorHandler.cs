@@ -50,7 +50,7 @@ internal sealed class StorHandler : IFtpCommandHandler
                     }
                     else
                     {
-                        byte[] data = new ReadOnlyMemory<byte>(buffer, 0, read).ToArray();
+                        var data = new ReadOnlyMemory<byte>(buffer, 0, read);
                         yield return data; sent += data.Length; Observability.Metrics.BytesReceived.Add(data.Length); Observability.Metrics.SessionBytesReceived.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid)); sent = await Throttle.ApplyAsync(sent, limit, sw, token);
                     }
                 }

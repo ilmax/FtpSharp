@@ -16,10 +16,18 @@ public interface IStorageProvider
     /// <summary>Rename a file from one path to another. Implementations may throw NotSupportedException for directories.</summary>
     Task RenameAsync(string fromPath, string toPath, CancellationToken ct);
 
-    /// <summary>Read a file as a sequence of buffers to avoid large copies.</summary>
+    /// <summary>
+    /// Read a file as a sequence of buffers to avoid large copies.
+    /// Note: the returned ReadOnlyMemory segments may reference an internal reusable buffer. Consumers must process
+    /// or copy the data before advancing the enumerator to the next item.
+    /// </summary>
     IAsyncEnumerable<ReadOnlyMemory<byte>> ReadAsync(string path, int bufferSize, CancellationToken ct);
 
-    /// <summary>Read a file starting at a specific byte offset.</summary>
+    /// <summary>
+    /// Read a file starting at a specific byte offset.
+    /// Note: the returned ReadOnlyMemory segments may reference an internal reusable buffer. Consumers must process
+    /// or copy the data before advancing the enumerator to the next item.
+    /// </summary>
     IAsyncEnumerable<ReadOnlyMemory<byte>> ReadFromOffsetAsync(string path, long offset, int bufferSize, CancellationToken ct);
 
     /// <summary>Write a file from a sequence of buffers.</summary>

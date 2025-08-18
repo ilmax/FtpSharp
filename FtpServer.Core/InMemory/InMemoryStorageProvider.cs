@@ -150,7 +150,8 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         {
             if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
             {
-                snapshot = f.Content.ToArray();
+                // Use the underlying array directly; handlers use PathLocks to prevent concurrent writes during reads.
+                snapshot = f.Content;
             }
         }
         if (snapshot is null) yield break;
@@ -172,7 +173,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         {
             if (_nodes.TryGetValue(path, out var node) && node is FileNode f)
             {
-                snapshot = f.Content.ToArray();
+                snapshot = f.Content;
             }
         }
         if (snapshot is null) yield break;
@@ -191,10 +192,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         using var ms = new MemoryStream();
         await foreach (var chunk in content.WithCancellation(ct))
         {
-            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                await ms.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-            else
-                await ms.WriteAsync(chunk.ToArray(), ct);
+            await ms.WriteAsync(chunk, ct);
         }
         byte[] data = ms.ToArray();
         lock (_gate)
@@ -218,10 +216,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         }
         await foreach (var chunk in content.WithCancellation(ct))
         {
-            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                await ms.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-            else
-                await ms.WriteAsync(chunk.ToArray(), ct);
+            await ms.WriteAsync(chunk, ct);
         }
         byte[] data = ms.ToArray();
         lock (_gate)
@@ -248,10 +243,7 @@ public sealed class InMemoryStorageProvider : IStorageProvider
         }
         await foreach (var chunk in content.WithCancellation(ct))
         {
-            if (MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)chunk, out var seg))
-                await ms.WriteAsync(seg.Array!, seg.Offset, seg.Count, ct);
-            else
-                await ms.WriteAsync(chunk.ToArray(), ct);
+            await ms.WriteAsync(chunk, ct);
         }
         byte[] data = ms.ToArray();
         lock (_gate)

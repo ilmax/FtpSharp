@@ -7,6 +7,7 @@ This document tracks possible improvements and future features for the FTP serve
 - ✅ FTPS (AUTH TLS, PBSZ, PROT, explicit/implicit modes) with cert management.
 - ✅ Resume/offset: REST and APPE support; integrate with FEAT.
 - ✅ FEAT advertises REST/APPE/FTPS commands.
+- ✅ Passive mode/NAT: data sockets bind to 0.0.0.0 and PASV replies can advertise a configurable PassivePublicIp.
 - MDTM (modification time) and MFMT; MLST/MLSD structured listings.
 - SITE commands (e.g., CHMOD), CHOWN/CHGRP (if provider supports permissions).
 - HASH/XCRC/XMD5 (non-standard) for integrity checks.
@@ -16,7 +17,7 @@ This document tracks possible improvements and future features for the FTP serve
 
 - ✅ Per-path reader/writer locks to serialize same-file writers and allow concurrent readers.
 - ✅ Throttling/rate limits per-transfer; configurable. (Shared/global limiter pending)
-- Zero-copy streaming where possible (Pipeline or MemoryPool usage).
+- ✅ Zero-copy streaming in storage providers and data handlers (ReadOnlyMemory slices; avoid ToArray); consider System.IO.Pipelines next.
 - Pipelining support and command queueing (where safe) to reduce RTT.
 
 ## Concurrency and Robustness
@@ -64,6 +65,7 @@ This document tracks possible improvements and future features for the FTP serve
 - ✅ Code coverage aggregated and enforced (>= 80%) with CI summary.
 - ✅ Central Package Management (Directory.Packages.props).
 - ✅ Dependabot for NuGet and GitHub Actions updates.
+- ✅ Dockerized integration tests execute the comprehensive curl script against the container, with NAT-friendly PASV configuration.
 - Docker multi-arch, image scanning, SBOM.
 
 ## Nice-to-have
