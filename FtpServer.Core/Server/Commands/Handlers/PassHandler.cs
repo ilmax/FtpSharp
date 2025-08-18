@@ -17,6 +17,14 @@ internal sealed class PassHandler : IFtpCommandHandler
         }
         var result = await _auth.AuthenticateAsync(context.PendingUser, parsed.Argument, ct);
         context.IsAuthenticated = result.Succeeded;
-        await writer.WriteLineAsync(result.Succeeded ? "230 User logged in, proceed." : "530 Not logged in.");
+        if (result.Succeeded)
+        {
+            await writer.WriteLineAsync("230 User logged in, proceed.");
+        }
+        else
+        {
+            var reason = string.IsNullOrWhiteSpace(result.Reason) ? "Not logged in." : $"Not logged in. {result.Reason}";
+            await writer.WriteLineAsync($"530 {reason}");
+        }
     }
 }
