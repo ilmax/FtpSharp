@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using FtpServer.Core.Abstractions;
@@ -7,9 +8,8 @@ using FtpServer.Core.Protocol;
 // Unused imports removed after handler extraction
 
 using FtpServer.Core.Server.Commands;
-using Microsoft.Extensions.Options;
-using System.Net;
 using FtpServer.Core.Server.Commands.Handlers;
+using Microsoft.Extensions.Options;
 
 namespace FtpServer.Core.Server;
 

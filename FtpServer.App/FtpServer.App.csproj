@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FtpServer.Core\FtpServer.Core.csproj" />
+    <ProjectReference Include="..\FtpServer.Storage.AzureBlob\FtpServer.Storage.AzureBlob.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
