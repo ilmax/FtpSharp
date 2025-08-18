@@ -27,8 +27,6 @@ public class HealthServerTests
         using var http = new HttpClient();
         var s = await http.GetStringAsync(url + "health");
         Assert.Equal("OK", s);
-        var snapshot = await http.GetStringAsync(url + "metrics-snapshot");
-        Assert.Contains("timestamp", snapshot);
 
         await srv.DisposeAsync();
     }

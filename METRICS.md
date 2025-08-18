@@ -39,9 +39,10 @@ A lightweight `HttpListener` can serve health:
 - Enable via CLI or configuration.
   - CLI: `--health true --health-url http://127.0.0.1:8080/`
   - Env: `FTP_FtpServer__HealthEnabled=true`, `FTP_FtpServer__HealthUrl=http://127.0.0.1:8080/`
-- Endpoints:
+- Endpoint:
   - `GET /health` → `200 OK` with body `OK`.
-  - `GET /metrics-snapshot` → simple JSON payload (note: for real metrics scraping, use OpenTelemetry exporters).
+
+For metrics, use the Prometheus exporter exposed by the ASP.NET host at `/metrics`.
 
 ## Troubleshooting
 

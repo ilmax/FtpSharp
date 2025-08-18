@@ -17,6 +17,7 @@ builder.Services.AddOptions<FtpServerOptions>()
     .ValidateDataAnnotations();
 
 builder.Services.AddSingleton<InMemoryAuthenticator>();
+builder.Services.AddSingleton<FtpServer.Core.Basic.BasicAuthenticator>();
 builder.Services.AddSingleton<InMemoryStorageProvider>();
 builder.Services.AddSingleton<FileSystemStorageProvider>();
 builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.PluginRegistry>();
@@ -122,7 +123,6 @@ var app = builder.Build();
 if (builder.Configuration.GetValue("FtpServer:HealthEnabled", false))
 {
     app.MapGet("/health", () => Results.Text("OK", "text/plain"));
-    app.MapGet("/metrics-snapshot", () => Results.Json(new { status = "ok", ts = DateTimeOffset.UtcNow }));
 }
 
 // Prometheus scrape endpoint

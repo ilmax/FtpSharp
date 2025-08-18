@@ -3,6 +3,7 @@
 An RFC-oriented FTP/FTPS server in C# with pluggable storage and authentication.
 
 - Plugins: storage and authentication via interfaces and a simple registry.
+	- Authenticators: InMemory (default), Basic (from config via FtpServer:Users)
 - Config: Microsoft.Extensions.Configuration (env vars prefix `FTP_`) and rich command-line flags.
 - FTPS: Explicit (AUTH TLS) and optional implicit TLS with PBSZ/PROT and certificate management.
 - Observability: Health endpoints (optional) and Prometheus metrics.
@@ -67,6 +68,7 @@ All options can be set via environment variables (prefix `FTP_` and `__` section
 - `FTP_FtpServer__PassivePortRangeStart=50000`
 - `FTP_FtpServer__PassivePortRangeEnd=50050`
 - `FTP_FtpServer__Authenticator=InMemory`
+	- To use Basic from config: `FTP_FtpServer__Authenticator=Basic` and set users like `FTP_FtpServer__Users__alice=secret`
 - `FTP_FtpServer__StorageProvider=FileSystem`
 - `FTP_FtpServer__StorageRoot=/data`
 - `FTP_FtpServer__FtpsExplicitEnabled=true`
