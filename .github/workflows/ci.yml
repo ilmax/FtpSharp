@@ -142,15 +142,18 @@ jobs:
             docker logs ftpserver-test || true
             exit 1
           fi
-      - name: Smoke test via curl against container
+      - name: Run comprehensive curl integration tests against container
+        env:
+          PORT: 2121
+          PASV_START: 49152
+          PASV_END: 49162
+          EXTERNAL_SERVER: "true"
+          AUTH_USER: test
+          AUTH_PASS: testpass
+          DOTNET_CONFIGURATION: Release
         run: |
-          set -e
-          TMPDIR=$(mktemp -d)
-          printf 'hello' >"$TMPDIR/local.txt"
-          curl -sS --ftp-create-dirs -u test:testpass -T "$TMPDIR/local.txt" ftp://127.0.0.1:2121/testdir/hello.txt >/dev/null
-          curl -sS -u test:testpass ftp://127.0.0.1:2121/testdir/ | grep -q hello.txt
-          curl -sS -u test:testpass ftp://127.0.0.1:2121/testdir/hello.txt -o "$TMPDIR/dl.txt" >/dev/null
-          diff -u "$TMPDIR/local.txt" "$TMPDIR/dl.txt"
+          chmod +x scripts/curl_integration_tests.sh
+          scripts/curl_integration_tests.sh
       - name: Dump logs on failure
         if: failure()
         run: |
