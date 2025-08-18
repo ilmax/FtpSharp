@@ -26,4 +26,8 @@ public interface IFtpSessionContext
     Task<Stream> OpenDataStreamAsync(CancellationToken ct);
     PassiveEndpoint EnterPassiveMode();
     System.Net.IPEndPoint? ActiveEndpoint { get; set; }
+    // TLS/FTPS state
+    bool IsControlTls { get; set; }
+    char DataProtectionLevel { get; set; } // 'C' (clear) or 'P' (private)
+    Task<Stream> UpgradeControlToTlsAsync(CancellationToken ct);
 }

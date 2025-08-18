@@ -23,6 +23,7 @@ builder.Services.AddSingleton<IAuthenticatorFactory, FtpServer.Core.Plugins.Plug
 builder.Services.AddSingleton<IStorageProviderFactory, FtpServer.Core.Plugins.PluginRegistry>();
 builder.Services.AddSingleton<FtpServerHost>();
 builder.Services.AddSingleton<PassivePortPool>();
+builder.Services.AddSingleton<TlsCertificateProvider>();
 
 // OpenTelemetry metrics with Prometheus exporter
 builder.Services.AddOpenTelemetry()

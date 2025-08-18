@@ -70,9 +70,12 @@ public class HandlerTests
         public bool ShouldQuit { get; set; }
         public string? PendingRenameFrom { get; set; }
         public System.Net.IPEndPoint? ActiveEndpoint { get; set; }
+        public bool IsControlTls { get; set; }
+        public char DataProtectionLevel { get; set; } = 'C';
         public string ResolvePath(string arg) => arg.StartsWith('/') ? arg : (Cwd == "/" ? "/" + arg : Cwd + "/" + arg);
         public Task<Stream> OpenDataStreamAsync(CancellationToken ct) => Task.FromException<Stream>(new IOException("no data"));
         public PassiveEndpoint EnterPassiveMode() => new PassiveEndpoint("127.0.0.1", 2121);
+        public Task<Stream> UpgradeControlToTlsAsync(CancellationToken ct) => Task.FromResult<Stream>(new MemoryStream());
     }
 
     private static async IAsyncEnumerable<ReadOnlyMemory<byte>> GetChunks(string text)

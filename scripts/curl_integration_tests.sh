@@ -35,6 +35,9 @@ export FTP_FTPSERVER__AUTHENTICATOR=InMemory
 export FTP_FTPSERVER__STORAGEPROVIDER=FileSystem
 export FTP_FTPSERVER__STORAGEROOT="$TMPDIR"
 export FTP_FTPSERVER__HEALTHENABLED=false
+# FTPS toggles for testing
+export FTP_FTPSERVER__FTPSEXPLICITENABLED=${FTP_EXPLICIT_ENABLED:-true}
+export FTP_FTPSERVER__FTPSIMPLICITENABLED=${FTP_IMPLICIT_ENABLED:-false}
 # Bind ASP.NET Core to an ephemeral port to avoid conflicts on 5000 during tests
 export ASPNETCORE_URLS="http://127.0.0.1:0"
 
@@ -154,11 +157,14 @@ curl -sS "${AUTH[@]}" "$FTP_URL/testdir/" | grep -q "p1.bin"
 echo "[ok] Core cURL segment passed"
 
 # Additional protocol checks
-step "FEAT advertises REST and APPE"
+step "FEAT advertises REST, APPE, and FTPS commands"
 # Use -v to ensure control replies are emitted to stderr across curl versions
 FEAT=$(curl -sS -v "${AUTH[@]}" "$FTP_URL/" --quote "FEAT" 2>&1 || true)
 echo "$FEAT" | grep -q "REST STREAM" || { echo "[error] FEAT missing REST STREAM" >&2; FAIL=1; }
 echo "$FEAT" | grep -q "APPE" || { echo "[error] FEAT missing APPE" >&2; FAIL=1; }
+echo "$FEAT" | grep -q "AUTH TLS" || { echo "[error] FEAT missing AUTH TLS" >&2; FAIL=1; }
+echo "$FEAT" | grep -q "PBSZ" || { echo "[error] FEAT missing PBSZ" >&2; FAIL=1; }
+echo "$FEAT" | grep -q "PROT" || { echo "[error] FEAT missing PROT" >&2; FAIL=1; }
 
 step "SYST returns a system type"
 if ! curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "SYST" >/dev/null; then
@@ -210,6 +216,17 @@ fi
 cmp "$TMPDIR/big2.bin" "$TMPDIR/big2.dl" || { echo "[error] Resumed upload content mismatch" >&2; FAIL=1; }
 
 # End extended checks
+
+# Explicit FTPS happy path (AUTH TLS, PBSZ 0, PROT P) if enabled
+if [[ "${FTP_FTPSERVER__FTPSEXPLICITENABLED}" == "true" ]]; then
+  step "Explicit FTPS AUTH TLS + PBSZ 0 + PROT P + simple LIST"
+  # curl --ftp-ssl-reqd enforces TLS on control; --insecure to accept self-signed
+  if ! curl -sS --ftp-ssl-reqd --insecure -v "${AUTH[@]}" "$FTP_URL/testdir/" --quote "PBSZ 0" --quote "PROT P" -o /dev/null 2>"$TMPDIR/ftps_explicit.log"; then
+    echo "[error] Explicit FTPS flow failed" >&2; FAIL=1;
+  else
+    echo "[info] Explicit FTPS flow ok" >&2
+  fi
+fi
 
 # Run additional tests using Python ftplib (active and passive data modes)
 if command -v python3 >/dev/null 2>&1; then
