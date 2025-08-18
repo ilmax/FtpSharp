@@ -6,6 +6,7 @@ This document tracks possible improvements and future features for the FTP serve
 
 - ✅ FTPS (AUTH TLS, PBSZ, PROT, explicit/implicit modes) with cert management.
 - ✅ Resume/offset: REST and APPE support; integrate with FEAT.
+- ✅ FEAT advertises REST/APPE/FTPS commands.
 - MDTM (modification time) and MFMT; MLST/MLSD structured listings.
 - SITE commands (e.g., CHMOD), CHOWN/CHGRP (if provider supports permissions).
 - HASH/XCRC/XMD5 (non-standard) for integrity checks.
@@ -44,6 +45,8 @@ This document tracks possible improvements and future features for the FTP serve
 
 ## Tooling and DX
 
+- ✅ CLI exposes all server options via command-line flags.
+- ✅ Treat warnings as errors solution-wide to keep builds clean.
 - CLI: richer help, subcommands, config export, dry-run validation.
 - Config hot-reload and dynamic plugin loading.
 - Test harness for stress (soak tests), chaos testing for network faults.
@@ -53,10 +56,14 @@ This document tracks possible improvements and future features for the FTP serve
 - FTPS hardening, cipher suites, HSTS for implicit TLS, certificate rotation.
 - Chroot jail enforcement and directory traversal hardening (already normalized).
 - Secret management via environment or Azure Key Vault.
+- ✅ Certificate management: load PFX or generate self-signed for FTPS.
 
 ## CI/CD
 
-- Integration tests against common FTP clients (curl, lftp) in CI.
+- ✅ cURL and Python ftplib integration tests in CI (explicit FTPS scenario included; implicit is opt-in).
+- ✅ Code coverage aggregated and enforced (>= 80%) with CI summary.
+- ✅ Central Package Management (Directory.Packages.props).
+- ✅ Dependabot for NuGet and GitHub Actions updates.
 - Docker multi-arch, image scanning, SBOM.
 
 ## Nice-to-have
