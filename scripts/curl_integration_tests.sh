@@ -12,6 +12,19 @@ PASV_END=${PASV_END:-49162}
 DOTNET_CONFIGURATION=${DOTNET_CONFIGURATION:-Release}
 SERVER_LOG="$TMPDIR/server.log"
 FAIL=0
+EXTERNAL_SERVER=${EXTERNAL_SERVER:-false}
+
+# Auth credentials (default anonymous). Override via AUTH_USER/AUTH_PASS for Basic auth.
+AUTH_USER=${AUTH_USER:-anonymous}
+AUTH_PASS=${AUTH_PASS:-}
+SKIP_ACTIVE=${SKIP_ACTIVE:-false}
+SKIP_PYTHON=${SKIP_PYTHON:-false}
+
+# In external server (Docker) mode, default to skipping active-mode and Python tests
+if [[ "$EXTERNAL_SERVER" == "true" ]]; then
+  SKIP_ACTIVE=${SKIP_ACTIVE:-true}
+  SKIP_PYTHON=${SKIP_PYTHON:-true}
+fi
 
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -25,44 +38,51 @@ trap cleanup EXIT
 
 echo "[info] Temp dir: $TMPDIR"
 
-# Configure server via environment variables (FTP_ prefix)
-export FTP_FTPSERVER__LISTENADDRESS=127.0.0.1
-export FTP_FTPSERVER__PORT=$PORT
-export FTP_FTPSERVER__MAXSESSIONS=10
-export FTP_FTPSERVER__PASSIVEPORTRANGESTART=$PASV_START
-export FTP_FTPSERVER__PASSIVEPORTRANGEEND=$PASV_END
-export FTP_FTPSERVER__AUTHENTICATOR=InMemory
-export FTP_FTPSERVER__STORAGEPROVIDER=FileSystem
-export FTP_FTPSERVER__STORAGEROOT="$TMPDIR"
-export FTP_FTPSERVER__HEALTHENABLED=false
-# FTPS toggles for testing
-export FTP_FTPSERVER__FTPSEXPLICITENABLED=${FTP_EXPLICIT_ENABLED:-true}
-export FTP_FTPSERVER__FTPSIMPLICITENABLED=${FTP_IMPLICIT_ENABLED:-false}
-# Bind ASP.NET Core to an ephemeral port to avoid conflicts on 5000 during tests
-export ASPNETCORE_URLS="http://127.0.0.1:0"
+if [[ "$EXTERNAL_SERVER" != "true" ]]; then
+  # Configure server via environment variables (FTP_ prefix)
+  export FTP_FTPSERVER__LISTENADDRESS=127.0.0.1
+  export FTP_FTPSERVER__PORT=$PORT
+  export FTP_FTPSERVER__MAXSESSIONS=10
+  export FTP_FTPSERVER__PASSIVEPORTRANGESTART=$PASV_START
+  export FTP_FTPSERVER__PASSIVEPORTRANGEEND=$PASV_END
+  export FTP_FTPSERVER__AUTHENTICATOR=InMemory
+  export FTP_FTPSERVER__STORAGEPROVIDER=FileSystem
+  export FTP_FTPSERVER__STORAGEROOT="$TMPDIR"
+  export FTP_FTPSERVER__HEALTHENABLED=false
+  # FTPS toggles for testing
+  export FTP_FTPSERVER__FTPSEXPLICITENABLED=${FTP_EXPLICIT_ENABLED:-true}
+  export FTP_FTPSERVER__FTPSIMPLICITENABLED=${FTP_IMPLICIT_ENABLED:-false}
+  # Bind ASP.NET Core to an ephemeral port to avoid conflicts on 5000 during tests
+  export ASPNETCORE_URLS="http://127.0.0.1:0"
 
-echo "[info] Starting server on 127.0.0.1:$PORT (PASV $PASV_START-$PASV_END) [config=$DOTNET_CONFIGURATION]"
-dotnet run --project "$ROOT_DIR/FtpServer.App" --no-build --configuration "$DOTNET_CONFIGURATION" >"$SERVER_LOG" 2>&1 &
-SERVER_PID=$!
+  echo "[info] Starting server on 127.0.0.1:$PORT (PASV $PASV_START-$PASV_END) [config=$DOTNET_CONFIGURATION]"
+  dotnet run --project "$ROOT_DIR/FtpServer.App" --no-build --configuration "$DOTNET_CONFIGURATION" >"$SERVER_LOG" 2>&1 &
+  SERVER_PID=$!
+else
+  echo "[info] External server mode: expecting server at 127.0.0.1:$PORT (PASV $PASV_START-$PASV_END)"
+fi
 
 # Wait for server to accept connections
 echo -n "[info] Waiting for server to be ready"
 for i in {1..60}; do
-  if curl -s --user anonymous: "ftp://127.0.0.1:$PORT/" >/dev/null 2>&1; then
+  if curl -s --user "$AUTH_USER:$AUTH_PASS" "ftp://127.0.0.1:$PORT/" >/dev/null 2>&1; then
     echo " - ready"
     break
   fi
   echo -n "."
   sleep 0.5
   if [[ $i -eq 60 ]]; then
-    echo "\n[error] Server did not start in time. Log follows:" >&2
-    tail -n +1 "$SERVER_LOG" >&2 || true
+    echo "\n[error] Server did not start in time." >&2
+    if [[ "$EXTERNAL_SERVER" != "true" ]]; then
+      echo "[info] Server log follows:" >&2
+      tail -n +1 "$SERVER_LOG" >&2 || true
+    fi
     exit 1
   fi
 done
 
 FTP_URL="ftp://127.0.0.1:$PORT"
-AUTH=(-u "anonymous:")
+AUTH=(-u "$AUTH_USER:$AUTH_PASS")
 
 step() { echo "[test] $*"; }
 
@@ -189,17 +209,25 @@ step "SIZE on directory returns error"
 SIZE_DIR=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "SIZE ." 2>&1 || true)
 echo "$SIZE_DIR" | grep -q "550" || { echo "[error] SIZE on directory did not return 550" >&2; FAIL=1; }
 
-step "Active mode RETR works"
-if ! curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null; then
-  echo "[error] Active mode RETR failed" >&2; FAIL=1;
+if [[ "$SKIP_ACTIVE" != "true" ]]; then
+  step "Active mode RETR works"
+  if ! curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null; then
+    echo "[error] Active mode RETR failed" >&2; FAIL=1;
+  fi
+  test -s "$TMPDIR/act_dl.bin" || { echo "[error] Active mode download is empty" >&2; FAIL=1; }
+else
+  echo "[info] Skipping active mode tests (SKIP_ACTIVE=true)"
 fi
-test -s "$TMPDIR/act_dl.bin" || { echo "[error] Active mode download is empty" >&2; FAIL=1; }
 
 step "Disable EPSV forces PASV path"
 if ! curl -sS --disable-epsv "${AUTH[@]}" "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/pasv_dl.bin" >/dev/null; then
   echo "[error] PASV retrieval with EPSV disabled failed" >&2; FAIL=1;
 fi
-cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin" || { echo "[error] Active vs PASV downloads differ" >&2; FAIL=1; }
+if [[ "$SKIP_ACTIVE" != "true" ]]; then
+  cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin" || { echo "[error] Active vs PASV downloads differ" >&2; FAIL=1; }
+else
+  test -s "$TMPDIR/pasv_dl.bin" || { echo "[error] PASV download is empty" >&2; FAIL=1; }
+fi
 
 step "Resume STOR upload with -C -"
 dd if=/dev/urandom of="$TMPDIR/big2.bin" bs=1024 count=96 status=none
@@ -218,7 +246,14 @@ cmp "$TMPDIR/big2.bin" "$TMPDIR/big2.dl" || { echo "[error] Resumed upload conte
 # End extended checks
 
 # Explicit FTPS happy path (AUTH TLS, PBSZ 0, PROT P) if enabled
-if [[ "${FTP_FTPSERVER__FTPSEXPLICITENABLED}" == "true" ]]; then
+# When running against an external server (Docker), default to skipping unless TEST_FTPS_EXPLICIT=true is set.
+DO_FTPS_EXPLICIT="false"
+if [[ "$EXTERNAL_SERVER" != "true" ]]; then
+  DO_FTPS_EXPLICIT="${FTP_FTPSERVER__FTPSEXPLICITENABLED:-true}"
+else
+  DO_FTPS_EXPLICIT="${TEST_FTPS_EXPLICIT:-false}"
+fi
+if [[ "$DO_FTPS_EXPLICIT" == "true" ]]; then
   step "Explicit FTPS AUTH TLS + PBSZ 0 + PROT P + simple LIST"
   # curl --ftp-ssl-reqd enforces TLS on control; --insecure to accept self-signed
   if ! curl -sS --ftp-ssl-reqd --insecure -v "${AUTH[@]}" "$FTP_URL/testdir/" --quote "PBSZ 0" --quote "PROT P" -o /dev/null 2>"$TMPDIR/ftps_explicit.log"; then
@@ -229,12 +264,16 @@ if [[ "${FTP_FTPSERVER__FTPSEXPLICITENABLED}" == "true" ]]; then
 fi
 
 # Run additional tests using Python ftplib (active and passive data modes)
-if command -v python3 >/dev/null 2>&1; then
-  if ! python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"; then
-    echo "[error] ftplib tests failed" >&2; FAIL=1;
+if [[ "$SKIP_PYTHON" != "true" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    if ! python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"; then
+      echo "[error] ftplib tests failed" >&2; FAIL=1;
+    fi
+  else
+    echo "[warn] python3 not found; skipping ftplib tests"
   fi
 else
-  echo "[warn] python3 not found; skipping ftplib tests"
+  echo "[info] Skipping Python ftplib tests (SKIP_PYTHON=true)"
 fi
 
 if [[ $FAIL -eq 0 ]]; then

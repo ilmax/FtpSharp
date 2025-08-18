@@ -8,6 +8,7 @@ using FtpServer.Core.Protocol;
 
 using FtpServer.Core.Server.Commands;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace FtpServer.Core.Server;
 
@@ -170,6 +171,22 @@ public sealed class FtpSession : IFtpSessionContext
         }
     }
 
+    private string GetPassiveAdvertisedIp()
+    {
+        var configuredPublic = _options.Value.PassivePublicIp;
+        if (!string.IsNullOrWhiteSpace(configuredPublic)) return configuredPublic!;
+        var configured = _options.Value.ListenAddress;
+        if (string.IsNullOrWhiteSpace(configured) || configured == "0.0.0.0" || configured == "::")
+        {
+            if (_client.Client.LocalEndPoint is IPEndPoint lep)
+            {
+                return lep.Address.ToString();
+            }
+            return "127.0.0.1";
+        }
+        return configured;
+    }
+
     public async Task<Stream> UpgradeControlToTlsAsync(CancellationToken ct)
     {
         var certProvider = new TlsCertificateProvider();
@@ -190,7 +207,8 @@ public sealed class FtpSession : IFtpSessionContext
             var lease = _passivePool.LeaseAsync(CancellationToken.None).GetAwaiter().GetResult();
             _pasvLease = lease;
             _pasvListener = lease.Listener;
-            return new PassiveEndpoint("127.0.0.1", lease.Port);
+            var ip = GetPassiveAdvertisedIp();
+            return new PassiveEndpoint(ip, lease.Port);
         }
         // Fallback linear scan
         var start = _options.Value.PassivePortRangeStart;
@@ -199,10 +217,12 @@ public sealed class FtpSession : IFtpSessionContext
         {
             try
             {
-                var l = new TcpListener(System.Net.IPAddress.Loopback, p);
+                // Bind to all interfaces for container/NAT friendliness
+                var l = new TcpListener(System.Net.IPAddress.Any, p);
                 l.Start();
                 _pasvListener = l;
-                return new PassiveEndpoint("127.0.0.1", p);
+                var ip = GetPassiveAdvertisedIp();
+                return new PassiveEndpoint(ip, p);
             }
             catch { }
         }

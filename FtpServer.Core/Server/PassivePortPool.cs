@@ -30,7 +30,8 @@ public sealed class PassivePortPool : IAsyncDisposable
             ct.ThrowIfCancellationRequested();
             try
             {
-                var l = new TcpListener(IPAddress.Loopback, p);
+                // Bind to all interfaces so data connections work behind NAT/containers
+                var l = new TcpListener(IPAddress.Any, p);
                 l.Start();
                 return Task.FromResult(new PassiveLease(p, l, this));
             }

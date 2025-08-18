@@ -1,9 +1,9 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Invocation;
+using FtpServer.App.CommandLine;
+using FtpServer.App.Extensions;
 using FtpServer.Core.Configuration;
 using FtpServer.Core.Server;
-using FtpServer.App.Extensions;
-using FtpServer.App.CommandLine;
 
 var builder = WebApplication.CreateBuilder(args);
 

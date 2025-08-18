@@ -28,6 +28,12 @@ public sealed class FtpServerOptions
     [Range(1, 65535)]
     public int PassivePortRangeEnd { get; init; } = 50_100;
 
+    /// <summary>
+    /// Optional public IP address to advertise in PASV replies. Useful when the server is behind NAT or in containers.
+    /// If null or empty, the server will use the control socket's local address or the configured ListenAddress.
+    /// </summary>
+    public string? PassivePublicIp { get; init; }
+
     /// <summary>Root path or container prefix for the storage provider.</summary>
     [Required]
     public string StorageRoot { get; init; } = "/data";
