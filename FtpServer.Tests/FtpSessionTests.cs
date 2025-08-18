@@ -22,16 +22,16 @@ public class FtpSessionTests
             using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
             using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
 
-            var greet = await reader.ReadLineAsync();
+            string? greet = await reader.ReadLineAsync();
             Assert.StartsWith("220", greet);
             await writer.WriteLineAsync("USER u");
-            var resp1 = await reader.ReadLineAsync();
+            string? resp1 = await reader.ReadLineAsync();
             Assert.StartsWith("331", resp1);
             await writer.WriteLineAsync("PASS p");
-            var resp2 = await reader.ReadLineAsync();
+            string? resp2 = await reader.ReadLineAsync();
             Assert.StartsWith("230", resp2);
             await writer.WriteLineAsync("QUIT");
-            var bye = await reader.ReadLineAsync();
+            string? bye = await reader.ReadLineAsync();
             Assert.StartsWith("221", bye);
         });
 
@@ -63,7 +63,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("DELE /d1"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("DELE /d1"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -93,7 +93,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("MKD /exists"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("MKD /exists"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -122,7 +122,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RETR /missing.txt"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("RETR /missing.txt"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -152,7 +152,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RETR /dir"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("RETR /dir"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -182,7 +182,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("STOR /dir"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("STOR /dir"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -211,7 +211,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("SIZE /dir"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("SIZE /dir"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -241,8 +241,8 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("CWD /f.txt"); var resp = await reader.ReadLineAsync(); Assert.StartsWith("550", resp);
-            await writer.WriteLineAsync("PWD"); var pwd = await reader.ReadLineAsync(); Assert.Contains("\"/\"", pwd);
+            await writer.WriteLineAsync("CWD /f.txt"); string? resp = await reader.ReadLineAsync(); Assert.StartsWith("550", resp);
+            await writer.WriteLineAsync("PWD"); string? pwd = await reader.ReadLineAsync(); Assert.Contains("\"/\"", pwd);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -267,7 +267,7 @@ public class FtpSessionTests
             using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
 
             _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("TYPE X"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("TYPE X"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("504", resp);
         });
 
@@ -295,7 +295,7 @@ public class FtpSessionTests
 
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("FEAT");
-            var l1 = await reader.ReadLineAsync(); Assert.StartsWith("211-", l1);
+            string? l1 = await reader.ReadLineAsync(); Assert.StartsWith("211-", l1);
             var features = new List<string>(); string? line;
             while (!string.IsNullOrEmpty(line = await reader.ReadLineAsync()) && !line.StartsWith("211 End"))
                 features.Add(line!.Trim());
@@ -337,7 +337,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RMD /dir"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("RMD /dir"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -365,15 +365,15 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync("STOR /z/new.bin"); _ = await reader.ReadLineAsync();
-            var buf = Encoding.ASCII.GetBytes("hi");
+            byte[] buf = Encoding.ASCII.GetBytes("hi");
             var dns = dc.GetStream();
             await dns.WriteAsync(buf, 0, buf.Length);
             await dns.FlushAsync();
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -383,7 +383,7 @@ public class FtpSessionTests
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
 
-        var size = await storage.GetSizeAsync("/z/new.bin", CancellationToken.None);
+        long size = await storage.GetSizeAsync("/z/new.bin", CancellationToken.None);
         Assert.Equal(2, size);
     }
 
@@ -404,7 +404,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("DELE /missing.txt"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("DELE /missing.txt"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -422,7 +422,7 @@ public class FtpSessionTests
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var ep = (IPEndPoint)listener.LocalEndpoint;
 
         // Prepare a port that will be closed/unreachable
-        var temp = new TcpListener(IPAddress.Loopback, 0); temp.Start(); var badPort = ((IPEndPoint)temp.LocalEndpoint).Port; temp.Stop();
+        var temp = new TcpListener(IPAddress.Loopback, 0); temp.Start(); int badPort = ((IPEndPoint)temp.LocalEndpoint).Port; temp.Stop();
 
         var clientTask = Task.Run(async () =>
         {
@@ -435,11 +435,11 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            var ip = IPAddress.Loopback.ToString().Replace('.', ',');
-            var p1 = badPort / 256; var p2 = badPort % 256;
+            string ip = IPAddress.Loopback.ToString().Replace('.', ',');
+            int p1 = badPort / 256; int p2 = badPort % 256;
             await writer.WriteLineAsync($"PORT {ip},{p1},{p2}"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("LIST"); var r150 = await reader.ReadLineAsync(); Assert.StartsWith("150", r150);
-            var r425 = await reader.ReadLineAsync(); Assert.StartsWith("425", r425);
+            await writer.WriteLineAsync("LIST"); string? r150 = await reader.ReadLineAsync(); Assert.StartsWith("150", r150);
+            string? r425 = await reader.ReadLineAsync(); Assert.StartsWith("425", r425);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -467,7 +467,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("EPRT |2|127.0.0.1|65000|"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("EPRT |2|127.0.0.1|65000|"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("501", resp);
         });
 
@@ -493,7 +493,7 @@ public class FtpSessionTests
             using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
 
             _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("NLST"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("NLST"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("530", resp);
         });
 
@@ -522,8 +522,8 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("CWD /nope"); var resp = await reader.ReadLineAsync(); Assert.StartsWith("550", resp);
-            await writer.WriteLineAsync("PWD"); var pwd = await reader.ReadLineAsync(); Assert.Contains("\"/\"", pwd);
+            await writer.WriteLineAsync("CWD /nope"); string? resp = await reader.ReadLineAsync(); Assert.StartsWith("550", resp);
+            await writer.WriteLineAsync("PWD"); string? pwd = await reader.ReadLineAsync(); Assert.Contains("\"/\"", pwd);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -549,7 +549,7 @@ public class FtpSessionTests
             using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
 
             _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("ABOR"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("ABOR"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("502", resp);
         });
 
@@ -578,7 +578,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RNFR /notthere.txt"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("RNFR /notthere.txt"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -606,7 +606,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RNTO /any.txt"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("RNTO /any.txt"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("503", resp);
         });
 
@@ -635,7 +635,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("SIZE /missing.txt"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("SIZE /missing.txt"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("550", resp);
         });
 
@@ -664,7 +664,7 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("EPRT nonsense"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("EPRT nonsense"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("501", resp);
         });
 
@@ -691,7 +691,7 @@ public class FtpSessionTests
             using var writer = new StreamWriter(stream, Encoding.ASCII) { NewLine = "\r\n", AutoFlush = true };
 
             _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("LIST"); var resp = await reader.ReadLineAsync();
+            await writer.WriteLineAsync("LIST"); string? resp = await reader.ReadLineAsync();
             Assert.StartsWith("530", resp);
         });
 
@@ -729,20 +729,20 @@ public class FtpSessionTests
             await writer.WriteLineAsync("CWD /d");
             _ = await reader.ReadLineAsync(); // 250
             await writer.WriteLineAsync("PASV");
-            var pasv = await reader.ReadLineAsync();
+            string? pasv = await reader.ReadLineAsync();
             Assert.StartsWith("227", pasv);
-            var (dip, dport) = ParsePasv(pasv!);
+            (string dip, int dport) = ParsePasv(pasv!);
 
             using var dataClient = new TcpClient();
             await dataClient.ConnectAsync(IPAddress.Parse(dip), dport);
 
             await writer.WriteLineAsync("LIST");
-            var status150 = await reader.ReadLineAsync();
+            string? status150 = await reader.ReadLineAsync();
             Assert.StartsWith("150", status150);
             using var dr = new StreamReader(dataClient.GetStream(), Encoding.ASCII);
-            var line = await dr.ReadLineAsync();
+            string? line = await dr.ReadLineAsync();
             Assert.EndsWith(" a.txt", line);
-            var status226 = await reader.ReadLineAsync();
+            string? status226 = await reader.ReadLineAsync();
             Assert.StartsWith("226", status226);
             await writer.WriteLineAsync("QUIT");
             _ = await reader.ReadLineAsync();
@@ -776,19 +776,19 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("MKD /m"); var mk = await reader.ReadLineAsync(); Assert.StartsWith("257", mk);
+            await writer.WriteLineAsync("MKD /m"); string? mk = await reader.ReadLineAsync(); Assert.StartsWith("257", mk);
             await writer.WriteLineAsync("CWD /m"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dataClient = new TcpClient(); await dataClient.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync("STOR f.txt"); _ = await reader.ReadLineAsync();
             await using (var ns = dataClient.GetStream())
             {
-                var bytes = Encoding.ASCII.GetBytes("abc");
+                byte[] bytes = Encoding.ASCII.GetBytes("abc");
                 await ns.WriteAsync(bytes, 0, bytes.Length);
             }
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
             await writer.WriteLineAsync("DELE /m/f.txt"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RMD /m"); var rm = await reader.ReadLineAsync(); Assert.StartsWith("250", rm);
+            await writer.WriteLineAsync("RMD /m"); string? rm = await reader.ReadLineAsync(); Assert.StartsWith("250", rm);
             await writer.WriteLineAsync("QUIT"); _ = await reader.ReadLineAsync();
         });
 
@@ -821,7 +821,7 @@ public class FtpSessionTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("TYPE I"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv1 = await reader.ReadLineAsync(); var (dip1, dp1) = ParsePasv(pasv1!);
+            await writer.WriteLineAsync("PASV"); string? pasv1 = await reader.ReadLineAsync(); (string dip1, int dp1) = ParsePasv(pasv1!);
             using (var d1 = new TcpClient())
             {
                 await d1.ConnectAsync(IPAddress.Parse(dip1), dp1);
@@ -829,19 +829,19 @@ public class FtpSessionTests
                 using var ns = d1.GetStream();
                 using var ms = new MemoryStream();
                 await ns.CopyToAsync(ms);
-                var done1 = await reader.ReadLineAsync(); Assert.StartsWith("226", done1);
+                string? done1 = await reader.ReadLineAsync(); Assert.StartsWith("226", done1);
                 Assert.Equal("hello", Encoding.ASCII.GetString(ms.ToArray()));
             }
 
-            await writer.WriteLineAsync("PASV"); var pasv2 = await reader.ReadLineAsync(); var (dip2, dp2) = ParsePasv(pasv2!);
+            await writer.WriteLineAsync("PASV"); string? pasv2 = await reader.ReadLineAsync(); (string dip2, int dp2) = ParsePasv(pasv2!);
             using (var d2 = new TcpClient())
             {
                 await d2.ConnectAsync(IPAddress.Parse(dip2), dp2);
                 await writer.WriteLineAsync("STOR /new.bin"); _ = await reader.ReadLineAsync();
-                var buf = Encoding.ASCII.GetBytes("world");
+                byte[] buf = Encoding.ASCII.GetBytes("world");
                 await d2.GetStream().WriteAsync(buf, 0, buf.Length);
             }
-            var done2 = await reader.ReadLineAsync(); Assert.StartsWith("226", done2);
+            string? done2 = await reader.ReadLineAsync(); Assert.StartsWith("226", done2);
             await writer.WriteLineAsync("QUIT"); _ = await reader.ReadLineAsync();
         });
 
@@ -852,7 +852,7 @@ public class FtpSessionTests
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
 
-        var size = await storage.GetSizeAsync("/new.bin", CancellationToken.None);
+        long size = await storage.GetSizeAsync("/new.bin", CancellationToken.None);
         Assert.Equal(5, size);
     }
 
@@ -877,18 +877,18 @@ public class FtpSessionTests
 
             var dataListener = new TcpListener(IPAddress.Loopback, 0); dataListener.Start();
             var dEp = (IPEndPoint)dataListener.LocalEndpoint;
-            var ip = dEp.Address.ToString().Replace('.', ',');
-            var p1 = dEp.Port / 256; var p2 = dEp.Port % 256;
+            string ip = dEp.Address.ToString().Replace('.', ',');
+            int p1 = dEp.Port / 256; int p2 = dEp.Port % 256;
             await writer.WriteLineAsync($"PORT {ip},{p1},{p2}");
             _ = await reader.ReadLineAsync();
             var acceptTask = dataListener.AcceptTcpClientAsync();
             await writer.WriteLineAsync("RETR /p.txt"); _ = await reader.ReadLineAsync();
             using var dataClient = await acceptTask;
             using var ns = dataClient.GetStream();
-            var b = new byte[1];
-            var r = await ns.ReadAsync(b, 0, 1);
+            byte[] b = new byte[1];
+            int r = await ns.ReadAsync(b, 0, 1);
             Assert.Equal(1, r);
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -919,18 +919,18 @@ public class FtpSessionTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("CWD /d2"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("EPSV"); var epsv = await reader.ReadLineAsync();
-            var start = epsv!.IndexOf('(');
-            var end = epsv!.IndexOf(')', start + 1);
-            var inside = epsv!.Substring(start + 1, end - start - 1);
-            var token = inside.Split('|', StringSplitOptions.RemoveEmptyEntries).First();
-            var port = int.Parse(token);
+            await writer.WriteLineAsync("EPSV"); string? epsv = await reader.ReadLineAsync();
+            int start = epsv!.IndexOf('(');
+            int end = epsv!.IndexOf(')', start + 1);
+            string inside = epsv!.Substring(start + 1, end - start - 1);
+            string token = inside.Split('|', StringSplitOptions.RemoveEmptyEntries).First();
+            int port = int.Parse(token);
             using var dataClient = new TcpClient(); await dataClient.ConnectAsync(IPAddress.Loopback, port);
             await writer.WriteLineAsync("LIST"); _ = await reader.ReadLineAsync();
             using var dr = new StreamReader(dataClient.GetStream(), Encoding.ASCII);
-            var line = await dr.ReadLineAsync();
+            string? line = await dr.ReadLineAsync();
             Assert.EndsWith(" b.txt", line);
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -964,10 +964,10 @@ public class FtpSessionTests
             var acceptTask = dataListener.AcceptTcpClientAsync();
             await writer.WriteLineAsync("STOR /e.bin"); _ = await reader.ReadLineAsync();
             using var dc = await acceptTask; using var ns = dc.GetStream();
-            var bytes = Encoding.ASCII.GetBytes("z"); await ns.WriteAsync(bytes, 0, bytes.Length);
+            byte[] bytes = Encoding.ASCII.GetBytes("z"); await ns.WriteAsync(bytes, 0, bytes.Length);
             await ns.FlushAsync();
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -977,17 +977,17 @@ public class FtpSessionTests
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
 
-        var size = await storage.GetSizeAsync("/e.bin", CancellationToken.None);
+        long size = await storage.GetSizeAsync("/e.bin", CancellationToken.None);
         Assert.Equal(1, size);
     }
 
     private static (string, int) ParsePasv(string s)
     {
-        var start = s.IndexOf('(');
-        var end = s.IndexOf(')');
-        var parts = s.Substring(start + 1, end - start - 1).Split(',');
-        var ip = string.Join('.', parts[..4]);
-        var port = int.Parse(parts[4]) * 256 + int.Parse(parts[5]);
+        int start = s.IndexOf('(');
+        int end = s.IndexOf(')');
+        string[] parts = s.Substring(start + 1, end - start - 1).Split(',');
+        string ip = string.Join('.', parts[..4]);
+        int port = int.Parse(parts[4]) * 256 + int.Parse(parts[5]);
         return (ip, port);
     }
 
@@ -1015,15 +1015,15 @@ public class FtpSessionTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
 
-            await writer.WriteLineAsync("NOOP"); var noop = await reader.ReadLineAsync(); Assert.StartsWith("200", noop);
+            await writer.WriteLineAsync("NOOP"); string? noop = await reader.ReadLineAsync(); Assert.StartsWith("200", noop);
 
             await writer.WriteLineAsync("HELP");
-            var h1 = await reader.ReadLineAsync(); Assert.StartsWith("214-", h1);
-            var h2 = await reader.ReadLineAsync(); Assert.Contains("USER", h2);
-            var h3 = await reader.ReadLineAsync(); Assert.StartsWith("214", h3);
+            string? h1 = await reader.ReadLineAsync(); Assert.StartsWith("214-", h1);
+            string? h2 = await reader.ReadLineAsync(); Assert.Contains("USER", h2);
+            string? h3 = await reader.ReadLineAsync(); Assert.StartsWith("214", h3);
 
             await writer.WriteLineAsync("STAT");
-            var s1 = await reader.ReadLineAsync(); Assert.StartsWith("211-", s1);
+            string? s1 = await reader.ReadLineAsync(); Assert.StartsWith("211-", s1);
             string? line;
             do { line = await reader.ReadLineAsync(); } while (line is not null && !line.StartsWith("211 End"));
 
@@ -1056,7 +1056,7 @@ public class FtpSessionTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             // Don't send anything else; expect server to close within timeout
-            var buf = new byte[1];
+            byte[] buf = new byte[1];
             var t0 = DateTime.UtcNow;
             try { await stream.ReadAsync(buf, 0, 1).WaitAsync(TimeSpan.FromSeconds(5)); } catch { }
             var dt = DateTime.UtcNow - t0;
@@ -1090,8 +1090,8 @@ public class FtpSessionTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("CWD /x"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("CDUP"); var cdup = await reader.ReadLineAsync(); Assert.StartsWith("200", cdup);
-            await writer.WriteLineAsync("PWD"); var pwd = await reader.ReadLineAsync(); Assert.Contains("\"/\"", pwd);
+            await writer.WriteLineAsync("CDUP"); string? cdup = await reader.ReadLineAsync(); Assert.StartsWith("200", cdup);
+            await writer.WriteLineAsync("PWD"); string? pwd = await reader.ReadLineAsync(); Assert.Contains("\"/\"", pwd);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -1124,14 +1124,14 @@ public class FtpSessionTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("CWD /d3"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
-            await writer.WriteLineAsync("NLST"); var s150 = await reader.ReadLineAsync(); Assert.StartsWith("150", s150);
+            await writer.WriteLineAsync("NLST"); string? s150 = await reader.ReadLineAsync(); Assert.StartsWith("150", s150);
             using var dr = new StreamReader(dc.GetStream(), Encoding.ASCII);
-            var n1 = await dr.ReadLineAsync(); var n2 = await dr.ReadLineAsync();
+            string? n1 = await dr.ReadLineAsync(); string? n2 = await dr.ReadLineAsync();
             Assert.Contains(n1, new[] { "a.txt", "b.txt" });
             Assert.Contains(n2, new[] { "a.txt", "b.txt" });
-            var s226 = await reader.ReadLineAsync(); Assert.StartsWith("226", s226);
+            string? s226 = await reader.ReadLineAsync(); Assert.StartsWith("226", s226);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -1160,10 +1160,10 @@ public class FtpSessionTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("SIZE /r.txt"); var size = await reader.ReadLineAsync(); Assert.Equal("213 3", size);
+            await writer.WriteLineAsync("SIZE /r.txt"); string? size = await reader.ReadLineAsync(); Assert.Equal("213 3", size);
             await writer.WriteLineAsync("RNFR /r.txt"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("RNTO /s.txt"); var rn = await reader.ReadLineAsync(); Assert.StartsWith("250", rn);
-            await writer.WriteLineAsync("SIZE /s.txt"); var size2 = await reader.ReadLineAsync(); Assert.Equal("213 3", size2);
+            await writer.WriteLineAsync("RNTO /s.txt"); string? rn = await reader.ReadLineAsync(); Assert.StartsWith("250", rn);
+            await writer.WriteLineAsync("SIZE /s.txt"); string? size2 = await reader.ReadLineAsync(); Assert.Equal("213 3", size2);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();

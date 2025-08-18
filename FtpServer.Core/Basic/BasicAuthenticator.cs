@@ -23,11 +23,11 @@ public sealed class BasicAuthenticator : IAuthenticator
             return Task.FromResult(new AuthResult(false, "Empty username"));
 
         // Read "FtpServer:Users:<username>"
-        var configured = _config[$"FtpServer:Users:{username}"];
+        string? configured = _config[$"FtpServer:Users:{username}"];
         if (configured is null)
             return Task.FromResult(new AuthResult(false, "Unknown user"));
 
-        var ok = string.Equals(configured, password, StringComparison.Ordinal);
+        bool ok = string.Equals(configured, password, StringComparison.Ordinal);
         return Task.FromResult(new AuthResult(ok, ok ? null : "Invalid credentials"));
     }
 }

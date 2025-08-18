@@ -16,14 +16,14 @@ public class FtpsImplicitIntegrationTests
     [Fact]
     public async Task ImplicitFtps_Accepts_Tls_And_Sends_Greeting()
     {
-        var enable = Environment.GetEnvironmentVariable("FTP_TEST_IMPLICIT");
+        string? enable = Environment.GetEnvironmentVariable("FTP_TEST_IMPLICIT");
         if (!string.Equals(enable, "true", StringComparison.OrdinalIgnoreCase) && enable != "1")
         {
             // Opt-in only; implicit FTPS can be environment-sensitive.
             return;
         }
         // Arrange options with implicit FTPS enabled
-        var p = GetFreePort();
+        int p = GetFreePort();
         var opts = Options.Create(new FtpServerOptions
         {
             ListenAddress = "127.0.0.1",
@@ -56,14 +56,14 @@ public class FtpsImplicitIntegrationTests
             }, authCts.Token);
 
             using var reader = new StreamReader(ssl, Encoding.ASCII, false, 1024, true);
-            var greet = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            string? greet = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(3));
             Assert.NotNull(greet);
             Assert.StartsWith("220", greet);
 
             // Politely terminate session
             using var writer = new StreamWriter(ssl) { AutoFlush = true, NewLine = "\r\n" };
             await writer.WriteLineAsync("QUIT");
-            var bye = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            string? bye = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(3));
             Assert.NotNull(bye);
         }
         finally
@@ -77,7 +77,7 @@ public class FtpsImplicitIntegrationTests
     {
         var l = new TcpListener(IPAddress.Loopback, 0);
         l.Start();
-        var p = ((IPEndPoint)l.LocalEndpoint).Port;
+        int p = ((IPEndPoint)l.LocalEndpoint).Port;
         l.Stop();
         return p;
     }

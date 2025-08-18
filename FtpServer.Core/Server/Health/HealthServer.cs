@@ -22,7 +22,7 @@ public sealed class HealthServer : IAsyncDisposable
     public async Task StartAsync(CancellationToken ct)
     {
         if (!_options.Value.HealthEnabled) return;
-        var url = _options.Value.HealthUrl;
+        string url = _options.Value.HealthUrl;
         _listener = new HttpListener();
         _listener.Prefixes.Add(url);
         _listener.Start();
@@ -53,10 +53,10 @@ public sealed class HealthServer : IAsyncDisposable
     {
         try
         {
-            var path = ctx.Request.Url?.AbsolutePath ?? "/";
+            string path = ctx.Request.Url?.AbsolutePath ?? "/";
             if (path == "/health")
             {
-                var bytes = System.Text.Encoding.UTF8.GetBytes("OK");
+                byte[] bytes = System.Text.Encoding.UTF8.GetBytes("OK");
                 ctx.Response.ContentType = "text/plain";
                 ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
                 ctx.Response.StatusCode = 200;

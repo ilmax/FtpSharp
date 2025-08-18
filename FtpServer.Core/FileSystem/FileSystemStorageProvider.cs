@@ -20,25 +20,25 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public Task<bool> ExistsAsync(string path, CancellationToken ct)
     {
-        var (phys, _, isDir) = Physical(path);
+        (string phys, _, bool isDir) = Physical(path);
         return Task.FromResult(isDir ? Directory.Exists(phys) : File.Exists(phys) || Directory.Exists(phys));
     }
 
     public Task<IReadOnlyList<FileSystemEntry>> ListAsync(string path, CancellationToken ct)
     {
-        var (phys, logical, _) = Physical(path);
+        (string phys, string logical, _) = Physical(path);
         if (!Directory.Exists(phys))
             return Task.FromResult<IReadOnlyList<FileSystemEntry>>(Array.Empty<FileSystemEntry>());
 
         var list = new List<FileSystemEntry>();
-        foreach (var d in Directory.GetDirectories(phys))
+        foreach (string d in Directory.GetDirectories(phys))
         {
-            var name = Path.GetFileName(d);
+            string name = Path.GetFileName(d);
             list.Add(new FileSystemEntry(name, CombineLogical(logical, name), true, null));
         }
-        foreach (var f in Directory.GetFiles(phys))
+        foreach (string f in Directory.GetFiles(phys))
         {
-            var name = Path.GetFileName(f);
+            string name = Path.GetFileName(f);
             var info = new FileInfo(f);
             list.Add(new FileSystemEntry(name, CombineLogical(logical, name), false, info.Length));
         }
@@ -47,14 +47,14 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public Task CreateDirectoryAsync(string path, CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         Directory.CreateDirectory(phys);
         return Task.CompletedTask;
     }
 
     public Task DeleteAsync(string path, bool recursive, CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         if (Directory.Exists(phys))
         {
             Directory.Delete(phys, recursive);
@@ -68,13 +68,13 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public Task<long> GetSizeAsync(string path, CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         return Task.FromResult(File.Exists(phys) ? new FileInfo(phys).Length : 0L);
     }
 
     public Task<FileSystemEntry?> GetEntryAsync(string path, CancellationToken ct)
     {
-        var (phys, logical, _) = Physical(path);
+        (string phys, string logical, _) = Physical(path);
         if (Directory.Exists(phys))
             return Task.FromResult<FileSystemEntry?>(new FileSystemEntry(Path.GetFileName(phys), logical, true, null));
         if (File.Exists(phys))
@@ -87,10 +87,10 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadAsync(string path, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         if (!File.Exists(phys)) yield break;
         using var fs = new FileStream(phys, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync: true);
-        var buffer = new byte[bufferSize];
+        byte[] buffer = new byte[bufferSize];
         int read;
         while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
         {
@@ -103,11 +103,11 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadFromOffsetAsync(string path, long offset, int bufferSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         if (!File.Exists(phys)) yield break;
         using var fs = new FileStream(phys, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync: true);
         if (offset > 0) fs.Seek(offset, SeekOrigin.Begin);
-        var buffer = new byte[bufferSize];
+        byte[] buffer = new byte[bufferSize];
         int read;
         while ((read = await fs.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
         {
@@ -119,7 +119,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public async Task WriteAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         Directory.CreateDirectory(Path.GetDirectoryName(phys)!);
         using var fs = new FileStream(phys, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true);
         await foreach (var chunk in content.WithCancellation(ct))
@@ -133,7 +133,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public async Task AppendAsync(string path, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         Directory.CreateDirectory(Path.GetDirectoryName(phys)!);
         using var fs = new FileStream(phys, FileMode.Append, FileAccess.Write, FileShare.None, 8192, useAsync: true);
         await foreach (var chunk in content.WithCancellation(ct))
@@ -147,7 +147,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public async Task WriteTruncateThenAppendAsync(string path, long truncateTo, IAsyncEnumerable<ReadOnlyMemory<byte>> content, CancellationToken ct)
     {
-        var (phys, _, _) = Physical(path);
+        (string phys, _, _) = Physical(path);
         Directory.CreateDirectory(Path.GetDirectoryName(phys)!);
         using (var fs = new FileStream(phys, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, 8192, useAsync: true))
         {
@@ -158,8 +158,8 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     public Task RenameAsync(string fromPath, string toPath, CancellationToken ct)
     {
-        var (fromPhys, _, _) = Physical(fromPath);
-        var (toPhys, _, _) = Physical(toPath);
+        (string fromPhys, _, _) = Physical(fromPath);
+        (string toPhys, _, _) = Physical(toPath);
         Directory.CreateDirectory(Path.GetDirectoryName(toPhys)!);
         if (File.Exists(fromPhys))
             File.Move(fromPhys, toPhys, overwrite: true);
@@ -170,12 +170,12 @@ public sealed class FileSystemStorageProvider : IStorageProvider
 
     private (string physical, string logical, bool isDirectoryPath) Physical(string logicalPath)
     {
-        var logical = NormalizeLogical(logicalPath);
-        var rel = logical.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-        var physical = Path.GetFullPath(Path.Combine(_root, rel));
+        string logical = NormalizeLogical(logicalPath);
+        string rel = logical.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        string physical = Path.GetFullPath(Path.Combine(_root, rel));
         if (!physical.StartsWith(_root, StringComparison.Ordinal))
             throw new IOException("Path escapes storage root");
-        var isDir = logical.EndsWith('/');
+        bool isDir = logical.EndsWith('/');
         return (physical, logical, isDir);
     }
 

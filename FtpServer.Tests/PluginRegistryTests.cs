@@ -26,6 +26,6 @@ public class PluginRegistryTests
     {
         private readonly Dictionary<Type, object> _map;
         public FakeServiceProvider(Dictionary<Type, object> map) => _map = map;
-        public object? GetService(Type serviceType) => _map.TryGetValue(serviceType, out var o) ? o : null;
+        public object? GetService(Type serviceType) => _map.TryGetValue(serviceType, out object? o) ? o : null;
     }
 }

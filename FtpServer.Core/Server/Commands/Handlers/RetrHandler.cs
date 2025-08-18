@@ -18,7 +18,7 @@ internal sealed class RetrHandler : IFtpCommandHandler
     public string Command => "RETR";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var path = context.ResolvePath(parsed.Argument);
+        string path = context.ResolvePath(parsed.Argument);
         var entry = await _storage.GetEntryAsync(path, ct);
         if (entry is null)
         {
@@ -38,16 +38,16 @@ internal sealed class RetrHandler : IFtpCommandHandler
             using var xferCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             xferCts.CancelAfter(_options.Value.DataTransferTimeoutMs);
             var token = xferCts.Token;
-            long sent = 0; var sw = new System.Diagnostics.Stopwatch(); var limit = (long)_options.Value.DataRateLimitBytesPerSec;
-            var offset = (context as FtpSession)!.RestartOffset;
+            long sent = 0; var sw = new System.Diagnostics.Stopwatch(); long limit = (long)_options.Value.DataRateLimitBytesPerSec;
+            long offset = (context as FtpSession)!.RestartOffset;
             (context as FtpSession)!.RestartOffset = 0; // consume
-            var sid = (context as FtpSession)!.SessionId;
+            string sid = (context as FtpSession)!.SessionId;
             await foreach (var chunk in (offset > 0 ? _storage.ReadFromOffsetAsync(path, offset, 8192, token) : _storage.ReadAsync(path, 8192, token)))
             {
                 if (context.TransferType == 'A')
                 {
-                    var text = System.Text.Encoding.ASCII.GetString(chunk.Span);
-                    var data = System.Text.Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
+                    string text = System.Text.Encoding.ASCII.GetString(chunk.Span);
+                    byte[] data = System.Text.Encoding.ASCII.GetBytes(text.Replace("\n", "\r\n"));
                     await rs.WriteAsync(data, 0, data.Length, token);
                     Metrics.BytesSent.Add(data.Length);
                     Metrics.SessionBytesSent.Add(data.Length, new KeyValuePair<string, object?>("session_id", sid));

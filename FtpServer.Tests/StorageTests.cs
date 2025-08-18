@@ -23,7 +23,7 @@ public class StorageTests
 
     private static async IAsyncEnumerable<ReadOnlyMemory<byte>> GetChunks(string text)
     {
-        var bytes = Encoding.ASCII.GetBytes(text);
+        byte[] bytes = Encoding.ASCII.GetBytes(text);
         yield return bytes;
         await Task.CompletedTask;
     }

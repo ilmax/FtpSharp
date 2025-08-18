@@ -26,7 +26,7 @@ public class HandlerTests
 
     private static async IAsyncEnumerable<ReadOnlyMemory<byte>> GetChunks(string text)
     {
-        var bytes = Encoding.ASCII.GetBytes(text);
+        byte[] bytes = Encoding.ASCII.GetBytes(text);
         yield return bytes;
         await Task.CompletedTask;
     }
@@ -51,7 +51,7 @@ public class HandlerTests
         using var w = new StreamWriter(ms) { AutoFlush = true };
         await h.HandleAsync(ctx, new ParsedCommand("MODE", "S"), w, CancellationToken.None);
         await h.HandleAsync(ctx, new ParsedCommand("MODE", "B"), w, CancellationToken.None);
-        var output = Encoding.ASCII.GetString(ms.ToArray());
+        string output = Encoding.ASCII.GetString(ms.ToArray());
         Assert.Contains("200", output);
         Assert.Contains("504", output);
     }
@@ -65,7 +65,7 @@ public class HandlerTests
         using var w = new StreamWriter(ms) { AutoFlush = true };
         await h.HandleAsync(ctx, new ParsedCommand("STRU", "F"), w, CancellationToken.None);
         await h.HandleAsync(ctx, new ParsedCommand("STRU", "R"), w, CancellationToken.None);
-        var output = Encoding.ASCII.GetString(ms.ToArray());
+        string output = Encoding.ASCII.GetString(ms.ToArray());
         Assert.Contains("200", output);
         Assert.Contains("504", output);
     }
@@ -79,7 +79,7 @@ public class HandlerTests
         using var w = new StreamWriter(ms) { AutoFlush = true };
         await h.HandleAsync(ctx, new ParsedCommand("ALLO", "123"), w, CancellationToken.None);
         await h.HandleAsync(ctx, new ParsedCommand("ALLO", string.Empty), w, CancellationToken.None);
-        var output = Encoding.ASCII.GetString(ms.ToArray());
+        string output = Encoding.ASCII.GetString(ms.ToArray());
         Assert.Contains("202", output);
     }
 
@@ -95,7 +95,7 @@ public class HandlerTests
         using var w = new StreamWriter(ms) { AutoFlush = true };
         await h.HandleAsync(ctx, new ParsedCommand("SIZE", "/d/a.txt"), w, CancellationToken.None);
         await h.HandleAsync(ctx, new ParsedCommand("SIZE", "/d"), w, CancellationToken.None);
-        var output = Encoding.ASCII.GetString(ms.ToArray());
+        string output = Encoding.ASCII.GetString(ms.ToArray());
         Assert.Contains("213 3", output);
         Assert.Contains("550 Not a plain file", output);
     }

@@ -42,18 +42,18 @@ public static class ConfigurationExtensions
             Set("FtpServer:Authenticator", pr.GetValueForOption(authOption));
             Set("FtpServer:StorageProvider", pr.GetValueForOption(storageOption));
             Set("FtpServer:StorageRoot", pr.GetValueForOption(storageRootOption));
-            var h = pr.GetValueForOption(healthEnabled); if (h is not null) Set("FtpServer:HealthEnabled", h.Value ? "true" : "false");
+            bool? h = pr.GetValueForOption(healthEnabled); if (h is not null) Set("FtpServer:HealthEnabled", h.Value ? "true" : "false");
             Set("FtpServer:HealthUrl", pr.GetValueForOption(healthUrl));
             Set("FtpServer:DataOpenTimeoutMs", pr.GetValueForOption(dataOpenTimeout)?.ToString());
             Set("FtpServer:DataTransferTimeoutMs", pr.GetValueForOption(dataTransferTimeout)?.ToString());
             Set("FtpServer:ControlReadTimeoutMs", pr.GetValueForOption(controlReadTimeout)?.ToString());
             Set("FtpServer:DataRateLimitBytesPerSec", pr.GetValueForOption(dataRateLimit)?.ToString());
-            var exp = pr.GetValueForOption(ftpsExplicit); if (exp is not null) Set("FtpServer:FtpsExplicitEnabled", exp.Value ? "true" : "false");
-            var imp = pr.GetValueForOption(ftpsImplicit); if (imp is not null) Set("FtpServer:FtpsImplicitEnabled", imp.Value ? "true" : "false");
+            bool? exp = pr.GetValueForOption(ftpsExplicit); if (exp is not null) Set("FtpServer:FtpsExplicitEnabled", exp.Value ? "true" : "false");
+            bool? imp = pr.GetValueForOption(ftpsImplicit); if (imp is not null) Set("FtpServer:FtpsImplicitEnabled", imp.Value ? "true" : "false");
             Set("FtpServer:FtpsImplicitPort", pr.GetValueForOption(ftpsImplicitPort)?.ToString());
             Set("FtpServer:TlsCertPath", pr.GetValueForOption(tlsCertPath));
             Set("FtpServer:TlsCertPassword", pr.GetValueForOption(tlsCertPassword));
-            var ss = pr.GetValueForOption(tlsSelfSigned); if (ss is not null) Set("FtpServer:TlsSelfSigned", ss.Value ? "true" : "false");
+            bool? ss = pr.GetValueForOption(tlsSelfSigned); if (ss is not null) Set("FtpServer:TlsSelfSigned", ss.Value ? "true" : "false");
         });
         return cmd;
     }

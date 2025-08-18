@@ -35,9 +35,9 @@ public class ActiveModeTests
 
             await writer.WriteLineAsync("RETR /file.txt"); _ = await reader.ReadLineAsync();
             using var dc = await dataListener.AcceptTcpClientAsync();
-            var buf = new byte[16]; var n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+            byte[] buf = new byte[16]; int n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
             Assert.Equal("ABC", Encoding.ASCII.GetString(buf, 0, n));
         });
 
@@ -71,9 +71,9 @@ public class ActiveModeTests
             await writer.WriteLineAsync($"EPRT |1|127.0.0.1|{dep.Port}|"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("STOR /eprt.bin"); _ = await reader.ReadLineAsync();
             using var dc = await dataListener.AcceptTcpClientAsync();
-            var payload = Encoding.ASCII.GetBytes("DATA"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
+            byte[] payload = Encoding.ASCII.GetBytes("DATA"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
@@ -81,7 +81,7 @@ public class ActiveModeTests
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
-        var size = await storage.GetSizeAsync("/eprt.bin", CancellationToken.None);
+        long size = await storage.GetSizeAsync("/eprt.bin", CancellationToken.None);
         Assert.Equal(4, size);
     }
 

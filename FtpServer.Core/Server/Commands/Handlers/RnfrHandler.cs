@@ -10,7 +10,7 @@ internal sealed class RnfrHandler : IFtpCommandHandler
     public string Command => "RNFR";
     public async Task HandleAsync(IFtpSessionContext context, ParsedCommand parsed, StreamWriter writer, CancellationToken ct)
     {
-        var from = context.ResolvePath(parsed.Argument);
+        string from = context.ResolvePath(parsed.Argument);
         if (!await _storage.ExistsAsync(from, ct))
         {
             await writer.WriteLineAsync("550 File not found");

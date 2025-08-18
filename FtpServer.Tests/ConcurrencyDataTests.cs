@@ -31,16 +31,16 @@ public class ConcurrencyDataTests
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
 
             await writer.WriteLineAsync("PASV");
-            var pasv = await reader.ReadLineAsync();
-            var (dip, dport) = ParsePasv(pasv!);
+            string? pasv = await reader.ReadLineAsync();
+            (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
 
-            var path = $"/p/{i}.bin";
+            string path = $"/p/{i}.bin";
             await writer.WriteLineAsync($"STOR {path}"); _ = await reader.ReadLineAsync();
-            var payload = Encoding.ASCII.GetBytes($"data-{i}");
+            byte[] payload = Encoding.ASCII.GetBytes($"data-{i}");
             await dc.GetStream().WriteAsync(payload, 0, payload.Length);
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         }).ToArray();
 
         var serverTasks = new List<Task>();
@@ -58,7 +58,7 @@ public class ConcurrencyDataTests
 
         for (int i = 0; i < clientTasks.Length; i++)
         {
-            var size = await storage.GetSizeAsync($"/p/{i}.bin", CancellationToken.None);
+            long size = await storage.GetSizeAsync($"/p/{i}.bin", CancellationToken.None);
             Assert.Equal($"data-{i}".Length, size);
         }
     }
@@ -74,7 +74,7 @@ public class ConcurrencyDataTests
         var storage = new InMemoryStorageProvider();
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
 
-        var path = "/concurrent.bin";
+        string path = "/concurrent.bin";
 
         async Task ClientWrite(string payload, int pauseBeforeCloseMs)
         {
@@ -87,16 +87,16 @@ public class ConcurrencyDataTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync($"STOR {path}"); _ = await reader.ReadLineAsync();
-            var bytes = Encoding.ASCII.GetBytes(payload);
+            byte[] bytes = Encoding.ASCII.GetBytes(payload);
             // write in one chunk
             await dc.GetStream().WriteAsync(bytes, 0, bytes.Length);
             await dc.GetStream().FlushAsync();
             if (pauseBeforeCloseMs > 0) await Task.Delay(pauseBeforeCloseMs);
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         }
 
         var c1 = ClientWrite("AAAA", 20);
@@ -116,12 +116,12 @@ public class ConcurrencyDataTests
         await Task.WhenAll(serverTasks);
 
         // With per-path writer lock, operations are serialized; both writes complete, last arrival wins deterministically but we can't predict order here. Just ensure file contains one of the payloads.
-        var size = await storage.GetSizeAsync(path, CancellationToken.None);
+        long size = await storage.GetSizeAsync(path, CancellationToken.None);
         Assert.True(size == 4 || size == 8);
         var collected = new List<byte>();
         await foreach (var chunk in storage.ReadAsync(path, 64, CancellationToken.None))
             collected.AddRange(chunk.ToArray());
-        var text = Encoding.ASCII.GetString(collected.ToArray());
+        string text = Encoding.ASCII.GetString(collected.ToArray());
         Assert.True(text == "AAAA" || text == "BBBBBBBB");
     }
 
@@ -145,12 +145,12 @@ public class ConcurrencyDataTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("REST 5"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync("RETR /f.txt"); _ = await reader.ReadLineAsync();
-            var buf = new byte[64]; var n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
-            dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
-            var got = Encoding.ASCII.GetString(buf, 0, n); Assert.Equal("WORLD", got);
+            byte[] buf = new byte[64]; int n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+            dc.Close(); string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string got = Encoding.ASCII.GetString(buf, 0, n); Assert.Equal("WORLD", got);
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
@@ -176,11 +176,11 @@ public class ConcurrencyDataTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync("APPE /a.txt"); _ = await reader.ReadLineAsync();
-            var payload = Encoding.ASCII.GetBytes("WORLD"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
-            dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            byte[] payload = Encoding.ASCII.GetBytes("WORLD"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
+            dc.Close(); string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
@@ -189,7 +189,7 @@ public class ConcurrencyDataTests
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
         var collected = new List<byte>(); await foreach (var ch in storage.ReadAsync("/a.txt", 64, CancellationToken.None)) collected.AddRange(ch.ToArray());
-        var s = Encoding.ASCII.GetString(collected.ToArray()); Assert.Equal("HELLOWORLD", s);
+        string s = Encoding.ASCII.GetString(collected.ToArray()); Assert.Equal("HELLOWORLD", s);
     }
 
     [Fact]
@@ -210,11 +210,11 @@ public class ConcurrencyDataTests
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("REST 5"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync("STOR /s.txt"); _ = await reader.ReadLineAsync();
-            var payload = Encoding.ASCII.GetBytes("BYE"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
-            dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            byte[] payload = Encoding.ASCII.GetBytes("BYE"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
+            dc.Close(); string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
@@ -223,7 +223,7 @@ public class ConcurrencyDataTests
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
         var collected = new List<byte>(); await foreach (var ch in storage.ReadAsync("/s.txt", 64, CancellationToken.None)) collected.AddRange(ch.ToArray());
-        var s = Encoding.ASCII.GetString(collected.ToArray()); Assert.Equal("HELLOBYE", s);
+        string s = Encoding.ASCII.GetString(collected.ToArray()); Assert.Equal("HELLOBYE", s);
     }
 
     [Fact]
@@ -254,17 +254,17 @@ public class ConcurrencyDataTests
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
 
             await writer.WriteLineAsync("PASV");
-            var pasv = await reader.ReadLineAsync();
-            var (dip, dport) = ParsePasv(pasv!);
+            string? pasv = await reader.ReadLineAsync();
+            (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
 
-            var path = $"/r/{i}.txt";
+            string path = $"/r/{i}.txt";
             await writer.WriteLineAsync($"RETR {path}"); _ = await reader.ReadLineAsync();
-            var buf = new byte[64];
-            var n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+            byte[] buf = new byte[64];
+            int n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
             dc.Close();
-            var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
-            var got = Encoding.ASCII.GetString(buf, 0, n);
+            string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            string got = Encoding.ASCII.GetString(buf, 0, n);
             Assert.Equal($"ret-{i}", got);
         }).ToArray();
 
@@ -299,7 +299,7 @@ public class ConcurrencyDataTests
         // 4 RETR clients
         for (int i = 0; i < 4; i++)
         {
-            var idx = i;
+            int idx = i;
             tasks.Add(Task.Run(async () =>
             {
                 using var client = new TcpClient();
@@ -310,18 +310,18 @@ public class ConcurrencyDataTests
                 _ = await reader.ReadLineAsync();
                 await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
                 await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-                await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+                await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
                 using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
                 await writer.WriteLineAsync($"RETR /mix/r{idx}.txt"); _ = await reader.ReadLineAsync();
-                var buf = new byte[64]; var n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
-                dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
-                var got = Encoding.ASCII.GetString(buf, 0, n); Assert.Equal($"mix-{idx}", got);
+                byte[] buf = new byte[64]; int n = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+                dc.Close(); string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+                string got = Encoding.ASCII.GetString(buf, 0, n); Assert.Equal($"mix-{idx}", got);
             }));
         }
         // 4 STOR clients
         for (int i = 0; i < 4; i++)
         {
-            var idx = i;
+            int idx = i;
             tasks.Add(Task.Run(async () =>
             {
                 using var client = new TcpClient();
@@ -332,11 +332,11 @@ public class ConcurrencyDataTests
                 _ = await reader.ReadLineAsync();
                 await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
                 await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-                await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+                await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
                 using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
                 await writer.WriteLineAsync($"STOR /mix/w{idx}.bin"); _ = await reader.ReadLineAsync();
-                var payload = Encoding.ASCII.GetBytes($"w-{idx}"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
-                dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+                byte[] payload = Encoding.ASCII.GetBytes($"w-{idx}"); await dc.GetStream().WriteAsync(payload, 0, payload.Length);
+                dc.Close(); string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
             }));
         }
 
@@ -355,7 +355,7 @@ public class ConcurrencyDataTests
 
         for (int i = 0; i < 4; i++)
         {
-            var size = await storage.GetSizeAsync($"/mix/w{i}.bin", CancellationToken.None);
+            long size = await storage.GetSizeAsync($"/mix/w{i}.bin", CancellationToken.None);
             Assert.Equal($"w-{i}".Length, size);
         }
     }
@@ -389,12 +389,12 @@ public class ConcurrencyDataTests
                 await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
                 await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
 
-                await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+                await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
                 using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
                 await writer.WriteLineAsync("RETR /file.txt"); _ = await reader.ReadLineAsync();
-                var buf = new byte[8]; _ = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
+                byte[] buf = new byte[8]; _ = await dc.GetStream().ReadAsync(buf, 0, buf.Length);
                 dc.Close();
-                var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+                string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
             }).ToArray();
 
         var serverTasks = new List<Task>();
@@ -418,7 +418,7 @@ public class ConcurrencyDataTests
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
         // ~10KB file
-        var payload = new string('x', 10_240);
+        string payload = new string('x', 10_240);
         await storage.WriteAsync("/big.bin", OneChunk(payload), CancellationToken.None);
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions
         {
@@ -435,12 +435,12 @@ public class ConcurrencyDataTests
             _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("USER u"); _ = await reader.ReadLineAsync();
             await writer.WriteLineAsync("PASS p"); _ = await reader.ReadLineAsync();
-            await writer.WriteLineAsync("PASV"); var pasv = await reader.ReadLineAsync(); var (dip, dport) = ParsePasv(pasv!);
+            await writer.WriteLineAsync("PASV"); string? pasv = await reader.ReadLineAsync(); (string dip, int dport) = ParsePasv(pasv!);
             using var dc = new TcpClient(); await dc.ConnectAsync(IPAddress.Parse(dip), dport);
             await writer.WriteLineAsync("RETR /big.bin"); _ = await reader.ReadLineAsync();
-            var buf = new byte[20_480]; int total = 0; int n;
+            byte[] buf = new byte[20_480]; int total = 0; int n;
             while ((n = await dc.GetStream().ReadAsync(buf, total, buf.Length - total)) > 0) total += n;
-            dc.Close(); var done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
+            dc.Close(); string? done = await reader.ReadLineAsync(); Assert.StartsWith("226", done);
             Assert.Equal(10_240, total);
         });
 
@@ -458,13 +458,13 @@ public class ConcurrencyDataTests
     {
         if (string.IsNullOrWhiteSpace(s) || !s.Contains('(') || !s.Contains(')'))
             throw new InvalidOperationException($"Unexpected PASV response: '{s}'");
-        var start = s.IndexOf('(');
-        var end = s.IndexOf(')');
-        var inner = s.Substring(start + 1, end - start - 1);
-        var parts = inner.Split(',');
+        int start = s.IndexOf('(');
+        int end = s.IndexOf(')');
+        string inner = s.Substring(start + 1, end - start - 1);
+        string[] parts = inner.Split(',');
         if (parts.Length < 6) throw new InvalidOperationException($"Unexpected PASV tuple: '{inner}'");
-        var ip = string.Join('.', parts[0], parts[1], parts[2], parts[3]);
-        var port = int.Parse(parts[4]) * 256 + int.Parse(parts[5]);
+        string ip = string.Join('.', parts[0], parts[1], parts[2], parts[3]);
+        int port = int.Parse(parts[4]) * 256 + int.Parse(parts[5]);
         return (ip, port);
     }
 

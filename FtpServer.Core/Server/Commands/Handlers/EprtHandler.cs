@@ -17,12 +17,12 @@ internal sealed class EprtHandler : IFtpCommandHandler
     {
         ep = null;
         if (string.IsNullOrEmpty(arg)) return false;
-        var delim = arg[0];
-        var parts = arg.Split(delim);
+        char delim = arg[0];
+        string[] parts = arg.Split(delim);
         if (parts.Length < 5) return false;
-        if (!int.TryParse(parts[1], out var af)) return false;
-        var addrStr = parts[2];
-        if (!int.TryParse(parts[3], out var port)) return false;
+        if (!int.TryParse(parts[1], out int af)) return false;
+        string addrStr = parts[2];
+        if (!int.TryParse(parts[3], out int port)) return false;
         try
         {
             var addr = System.Net.IPAddress.Parse(addrStr);

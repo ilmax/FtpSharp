@@ -173,9 +173,9 @@ public sealed class FtpSession : IFtpSessionContext
 
     private string GetPassiveAdvertisedIp()
     {
-        var configuredPublic = _options.Value.PassivePublicIp;
+        string? configuredPublic = _options.Value.PassivePublicIp;
         if (!string.IsNullOrWhiteSpace(configuredPublic)) return configuredPublic!;
-        var configured = _options.Value.ListenAddress;
+        string configured = _options.Value.ListenAddress;
         if (string.IsNullOrWhiteSpace(configured) || configured == "0.0.0.0" || configured == "::")
         {
             if (_client.Client.LocalEndPoint is IPEndPoint lep)
@@ -207,12 +207,12 @@ public sealed class FtpSession : IFtpSessionContext
             var lease = _passivePool.LeaseAsync(CancellationToken.None).GetAwaiter().GetResult();
             _pasvLease = lease;
             _pasvListener = lease.Listener;
-            var ip = GetPassiveAdvertisedIp();
+            string ip = GetPassiveAdvertisedIp();
             return new PassiveEndpoint(ip, lease.Port);
         }
         // Fallback linear scan
-        var start = _options.Value.PassivePortRangeStart;
-        var end = _options.Value.PassivePortRangeEnd;
+        int start = _options.Value.PassivePortRangeStart;
+        int end = _options.Value.PassivePortRangeEnd;
         for (int p = start; p <= end; p++)
         {
             try
@@ -221,7 +221,7 @@ public sealed class FtpSession : IFtpSessionContext
                 var l = new TcpListener(System.Net.IPAddress.Any, p);
                 l.Start();
                 _pasvListener = l;
-                var ip = GetPassiveAdvertisedIp();
+                string ip = GetPassiveAdvertisedIp();
                 return new PassiveEndpoint(ip, p);
             }
             catch { }

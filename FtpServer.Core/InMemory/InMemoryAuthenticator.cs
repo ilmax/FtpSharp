@@ -17,7 +17,7 @@ public sealed class InMemoryAuthenticator : IAuthenticator
 
     public Task<AuthResult> AuthenticateAsync(string username, string password, CancellationToken ct)
     {
-        if (_users.TryGetValue(username, out var pwd) && pwd == password)
+        if (_users.TryGetValue(username, out string? pwd) && pwd == password)
             return Task.FromResult(new AuthResult(true, null));
         return Task.FromResult(new AuthResult(false, "Invalid credentials"));
     }
