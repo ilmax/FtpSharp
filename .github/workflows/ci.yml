@@ -112,9 +112,21 @@ jobs:
             ftpserver:test
       - name: Wait for FTP to be ready
         run: |
-          for i in {1..60}; do
-            if curl -s --user test:testpass ftp://127.0.0.1:2121/ >/dev/null 2>&1; then
-              echo "ready"; break; fi; sleep 0.5; done
+          set -e
+          READY=0
+          for i in {1..120}; do
+            if timeout 2 bash -lc 'exec 3<>/dev/tcp/127.0.0.1/2121; read -t 2 banner <&3; echo "$banner" | grep -q "^220"'; then
+              echo "FTP banner received (220)."
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "FTP server did not become ready in time." >&2
+            docker logs ftpserver-test || true
+            exit 1
+          fi
       - name: Smoke test via curl against container
         run: |
           set -e
