@@ -63,22 +63,7 @@ public sealed class HealthServer : IAsyncDisposable
                 ctx.Response.Close();
                 return;
             }
-            if (path == "/metrics-snapshot")
-            {
-                // Minimal snapshot based on counters we maintain
-                var payload = new
-                {
-                    sessionsActive = "n/a", // UpDownCounter cannot be read directly; left as n/a in snapshot
-                    timestamp = DateTimeOffset.UtcNow
-                };
-                var json = JsonSerializer.Serialize(payload);
-                var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-                ctx.Response.ContentType = "application/json";
-                ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
-                ctx.Response.StatusCode = 200;
-                ctx.Response.Close();
-                return;
-            }
+            // Deprecated: metrics-snapshot removed; use Prometheus /metrics from ASP.NET host instead
             ctx.Response.StatusCode = 404;
             ctx.Response.Close();
         }

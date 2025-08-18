@@ -29,8 +29,8 @@ public sealed class TlsCertificateProvider
         san.AddDnsName("localhost");
         san.AddIpAddress(System.Net.IPAddress.Loopback);
         req.CertificateExtensions.Add(san.Build());
-    var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-    _cached = cert;
+        var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        _cached = cert;
         return _cached;
     }
 }

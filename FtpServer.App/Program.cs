@@ -123,7 +123,6 @@ var app = builder.Build();
 if (builder.Configuration.GetValue("FtpServer:HealthEnabled", false))
 {
     app.MapGet("/health", () => Results.Text("OK", "text/plain"));
-    app.MapGet("/metrics-snapshot", () => Results.Json(new { status = "ok", ts = DateTimeOffset.UtcNow }));
 }
 
 // Prometheus scrape endpoint
