@@ -59,11 +59,7 @@ public sealed partial class AzureBlobStorageProviderIntegrationTests
     [Fact(Timeout = 60000)]
     public async Task Write_Read_List_Delete_Works()
     {
-        if (!_dockerAvailable)
-        {
-            // Docker is not available; treat as no-op to avoid false failures in environments without Docker.
-            return;
-        }
+        Skip.IfNot(_dockerAvailable, "Docker is not running or misconfigured; skipping Azurite-backed tests.");
         var provider = CreateProvider(prefix: "it");
         var ct = CancellationToken.None;
 

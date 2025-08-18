@@ -9,7 +9,7 @@ public sealed partial class AzureBlobStorageProviderIntegrationTests
     [Fact(Timeout = 60000)]
     public async Task ReadFromOffset_Works()
     {
-        if (!_dockerAvailable) return;
+        Skip.IfNot(_dockerAvailable, "Docker is not running or misconfigured; skipping Azurite-backed tests.");
         var provider = CreateProvider(prefix: "it2");
         var ct = CancellationToken.None;
 
@@ -27,7 +27,7 @@ public sealed partial class AzureBlobStorageProviderIntegrationTests
     [Fact(Timeout = 60000)]
     public async Task TruncateThenAppend_Works()
     {
-        if (!_dockerAvailable) return;
+        Skip.IfNot(_dockerAvailable, "Docker is not running or misconfigured; skipping Azurite-backed tests.");
         var provider = CreateProvider(prefix: "it3");
         var ct = CancellationToken.None;
 
@@ -42,7 +42,7 @@ public sealed partial class AzureBlobStorageProviderIntegrationTests
     [Fact(Timeout = 60000)]
     public async Task GetEntry_ForDir_And_File_Works()
     {
-        if (!_dockerAvailable) return;
+        Skip.IfNot(_dockerAvailable, "Docker is not running or misconfigured; skipping Azurite-backed tests.");
         var provider = CreateProvider(prefix: "it4");
         var ct = CancellationToken.None;
 
@@ -64,7 +64,7 @@ public sealed partial class AzureBlobStorageProviderIntegrationTests
     [Fact(Timeout = 60000)]
     public async Task Delete_NonRecursive_Throws_On_Dir()
     {
-        if (!_dockerAvailable) return;
+        Skip.IfNot(_dockerAvailable, "Docker is not running or misconfigured; skipping Azurite-backed tests.");
         var provider = CreateProvider(prefix: "it5");
         var ct = CancellationToken.None;
 
@@ -77,7 +77,7 @@ public sealed partial class AzureBlobStorageProviderIntegrationTests
     [Fact(Timeout = 60000)]
     public async Task Rename_Directory_Works()
     {
-        if (!_dockerAvailable) return;
+        Skip.IfNot(_dockerAvailable, "Docker is not running or misconfigured; skipping Azurite-backed tests.");
         var provider = CreateProvider(prefix: "it6");
         var ct = CancellationToken.None;
 
