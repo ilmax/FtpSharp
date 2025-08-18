@@ -8,6 +8,7 @@ COPY Directory.Build.props ./
 COPY FtpServer.Core/FtpServer.Core.csproj FtpServer.Core/
 COPY FtpServer.App/FtpServer.App.csproj FtpServer.App/
 COPY FtpServer.Tests/FtpServer.Tests.csproj FtpServer.Tests/
+COPY FtpServer.Storage.AzureBlob/FtpServer.Storage.AzureBlob.csproj FtpServer.Storage.AzureBlob/
 RUN dotnet restore FtpServer.sln
 COPY . .
 RUN dotnet publish FtpServer.App/FtpServer.App.csproj -c Release -o /app/publish --no-restore

@@ -71,6 +71,12 @@ All options can be set via environment variables (prefix `FTP_` and `__` section
 	- To use Basic from config: `FTP_FtpServer__Authenticator=Basic` and set users like `FTP_FtpServer__Users__alice=secret`
 - `FTP_FtpServer__StorageProvider=FileSystem`
 - `FTP_FtpServer__StorageRoot=/data`
+	- Azure Blob example:
+		- `FTP_FtpServer__StorageProvider=AzureBlob`
+		- `FTP_AzureBlob__AccountUrl=https://<account>.blob.core.windows.net`
+		- `FTP_AzureBlob__Container=<container>`
+		- `FTP_AzureBlob__Prefix=optional/prefix`
+		- Auth: uses DefaultAzureCredential (works with Managed Identity on Azure, Azure CLI login locally, etc.)
 - `FTP_FtpServer__FtpsExplicitEnabled=true`
 - `FTP_FtpServer__FtpsImplicitEnabled=false`
 - `FTP_FtpServer__FtpsImplicitPort=990`

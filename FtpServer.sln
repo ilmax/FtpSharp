@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FtpServer.App", "FtpServer.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FtpServer.Tests", "FtpServer.Tests\FtpServer.Tests.csproj", "{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FtpServer.Storage.AzureBlob", "FtpServer.Storage.AzureBlob\FtpServer.Storage.AzureBlob.csproj", "{C3E1402E-7B1B-4B11-8C53-10C49E8FE1B9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6E92BA23-B0EA-4F05-9DB8-D97925A6D0B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3E1402E-7B1B-4B11-8C53-10C49E8FE1B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3E1402E-7B1B-4B11-8C53-10C49E8FE1B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3E1402E-7B1B-4B11-8C53-10C49E8FE1B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3E1402E-7B1B-4B11-8C53-10C49E8FE1B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
