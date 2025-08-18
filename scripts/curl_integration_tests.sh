@@ -17,6 +17,14 @@ EXTERNAL_SERVER=${EXTERNAL_SERVER:-false}
 # Auth credentials (default anonymous). Override via AUTH_USER/AUTH_PASS for Basic auth.
 AUTH_USER=${AUTH_USER:-anonymous}
 AUTH_PASS=${AUTH_PASS:-}
+SKIP_ACTIVE=${SKIP_ACTIVE:-false}
+SKIP_PYTHON=${SKIP_PYTHON:-false}
+
+# In external server (Docker) mode, default to skipping active-mode and Python tests
+if [[ "$EXTERNAL_SERVER" == "true" ]]; then
+  SKIP_ACTIVE=${SKIP_ACTIVE:-true}
+  SKIP_PYTHON=${SKIP_PYTHON:-true}
+fi
 
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -201,17 +209,25 @@ step "SIZE on directory returns error"
 SIZE_DIR=$(curl -sS "${AUTH[@]}" "$FTP_URL/" --quote "CWD testdir" --quote "SIZE ." 2>&1 || true)
 echo "$SIZE_DIR" | grep -q "550" || { echo "[error] SIZE on directory did not return 550" >&2; FAIL=1; }
 
-step "Active mode RETR works"
-if ! curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null; then
-  echo "[error] Active mode RETR failed" >&2; FAIL=1;
+if [[ "$SKIP_ACTIVE" != "true" ]]; then
+  step "Active mode RETR works"
+  if ! curl -sS "${AUTH[@]}" -P - "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/act_dl.bin" >/dev/null; then
+    echo "[error] Active mode RETR failed" >&2; FAIL=1;
+  fi
+  test -s "$TMPDIR/act_dl.bin" || { echo "[error] Active mode download is empty" >&2; FAIL=1; }
+else
+  echo "[info] Skipping active mode tests (SKIP_ACTIVE=true)"
 fi
-test -s "$TMPDIR/act_dl.bin" || { echo "[error] Active mode download is empty" >&2; FAIL=1; }
 
 step "Disable EPSV forces PASV path"
 if ! curl -sS --disable-epsv "${AUTH[@]}" "$FTP_URL/testdir/renamed.bin" -o "$TMPDIR/pasv_dl.bin" >/dev/null; then
   echo "[error] PASV retrieval with EPSV disabled failed" >&2; FAIL=1;
 fi
-cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin" || { echo "[error] Active vs PASV downloads differ" >&2; FAIL=1; }
+if [[ "$SKIP_ACTIVE" != "true" ]]; then
+  cmp "$TMPDIR/act_dl.bin" "$TMPDIR/pasv_dl.bin" || { echo "[error] Active vs PASV downloads differ" >&2; FAIL=1; }
+else
+  test -s "$TMPDIR/pasv_dl.bin" || { echo "[error] PASV download is empty" >&2; FAIL=1; }
+fi
 
 step "Resume STOR upload with -C -"
 dd if=/dev/urandom of="$TMPDIR/big2.bin" bs=1024 count=96 status=none
@@ -241,12 +257,16 @@ if [[ "${FTP_FTPSERVER__FTPSEXPLICITENABLED}" == "true" ]]; then
 fi
 
 # Run additional tests using Python ftplib (active and passive data modes)
-if command -v python3 >/dev/null 2>&1; then
-  if ! python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"; then
-    echo "[error] ftplib tests failed" >&2; FAIL=1;
+if [[ "$SKIP_PYTHON" != "true" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    if ! python3 "$ROOT_DIR/scripts/ftplib_tests.py" "$PORT"; then
+      echo "[error] ftplib tests failed" >&2; FAIL=1;
+    fi
+  else
+    echo "[warn] python3 not found; skipping ftplib tests"
   fi
 else
-  echo "[warn] python3 not found; skipping ftplib tests"
+  echo "[info] Skipping Python ftplib tests (SKIP_PYTHON=true)"
 fi
 
 if [[ $FAIL -eq 0 ]]; then

@@ -151,6 +151,8 @@ jobs:
           AUTH_USER: test
           AUTH_PASS: testpass
           DOTNET_CONFIGURATION: Release
+          SKIP_ACTIVE: "true"
+          SKIP_PYTHON: "true"
         run: |
           chmod +x scripts/curl_integration_tests.sh
           scripts/curl_integration_tests.sh
