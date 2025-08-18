@@ -90,6 +90,8 @@ By default in Docker the ASP.NET endpoint is bound to `0.0.0.0:8080` (see Docker
 - `scripts/curl_integration_tests.sh` runs end-to-end protocol checks (including explicit FTPS path).
 - `scripts/ftplib_tests.py` runs basic passive and active transfers via Python’s `ftplib`.
 
+For AI assistance, see `.github/copilot-instructions.md` for repo-specific guidance used by Copilot.
+
 ## Docker
 
 ```bash
