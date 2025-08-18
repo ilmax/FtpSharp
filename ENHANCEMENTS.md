@@ -4,7 +4,7 @@ This document tracks possible improvements and future features for the FTP serve
 
 ## Protocol Features
 
-- FTPS (AUTH TLS, PBSZ, PROT, explicit/implicit modes) with cert management.
+- ✅ FTPS (AUTH TLS, PBSZ, PROT, explicit/implicit modes) with cert management.
 - ✅ Resume/offset: REST and APPE support; integrate with FEAT.
 - MDTM (modification time) and MFMT; MLST/MLSD structured listings.
 - SITE commands (e.g., CHMOD), CHOWN/CHGRP (if provider supports permissions).

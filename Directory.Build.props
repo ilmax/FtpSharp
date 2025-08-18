@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Treat all compiler warnings as errors solution-wide -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
