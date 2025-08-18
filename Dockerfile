@@ -2,6 +2,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 as build
 WORKDIR /src
 COPY FtpServer.sln ./
+# Include central package and build props for proper restore
+COPY Directory.Packages.props ./
+COPY Directory.Build.props ./
 COPY FtpServer.Core/FtpServer.Core.csproj FtpServer.Core/
 COPY FtpServer.App/FtpServer.App.csproj FtpServer.App/
 COPY FtpServer.Tests/FtpServer.Tests.csproj FtpServer.Tests/
@@ -25,6 +28,6 @@ ENV FTP_FtpServer__ListenAddress=0.0.0.0 \
     FTP_FtpServer__PassivePortRangeEnd=49200 \
     ASPNETCORE_URLS=http://0.0.0.0:8080
 
-# Expose FTP control and web ports (data ports depend on passive range and should be published as needed)
+# Expose FTP control and web ports; publish passive data range at runtime as needed, e.g., -p 50000-50050:50000-50050
 EXPOSE 21/tcp 8080/tcp
 ENTRYPOINT ["dotnet", "FtpServer.App.dll"]
