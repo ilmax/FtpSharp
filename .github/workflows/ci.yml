@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     outputs:
       semver: ${{ steps.gitversion.outputs.semVer }}
     steps:
@@ -58,7 +58,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: build-test
-    timeout-minutes: 20
+  timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
@@ -83,7 +83,7 @@ jobs:
   docker-integration:
     runs-on: ubuntu-latest
     needs: build-test
-    timeout-minutes: 25
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -121,7 +121,7 @@ jobs:
         run: |
           set -e
           READY=0
-          for i in {1..120}; do
+          for i in {1..60}; do
             if timeout 2 bash -lc 'exec 3<>/dev/tcp/127.0.0.1/2121; read -t 2 banner <&3; echo "$banner" | grep -q "^220"'; then
               echo "FTP banner received (220)."
               READY=1
@@ -155,7 +155,7 @@ jobs:
   curl-integration:
     runs-on: ubuntu-latest
     needs: build-test
-    timeout-minutes: 25
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
