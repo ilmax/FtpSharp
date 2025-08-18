@@ -139,7 +139,7 @@ jobs:
           set -e
           TMPDIR=$(mktemp -d)
           printf 'hello' >"$TMPDIR/local.txt"
-          curl -sS -u test:testpass -T "$TMPDIR/local.txt" ftp://127.0.0.1:2121/testdir/hello.txt >/dev/null
+          curl -sS --ftp-create-dirs -u test:testpass -T "$TMPDIR/local.txt" ftp://127.0.0.1:2121/testdir/hello.txt >/dev/null
           curl -sS -u test:testpass ftp://127.0.0.1:2121/testdir/ | grep -q hello.txt
           curl -sS -u test:testpass ftp://127.0.0.1:2121/testdir/hello.txt -o "$TMPDIR/dl.txt" >/dev/null
           diff -u "$TMPDIR/local.txt" "$TMPDIR/dl.txt"
