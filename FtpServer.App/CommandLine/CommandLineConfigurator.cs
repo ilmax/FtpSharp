@@ -69,84 +69,85 @@ public static class CommandLineConfigurator
     {
         var args = new List<string>();
         
-        var cmd = parseResult.CommandResult.Command as RootCommand;
-        if (cmd == null) return args.ToArray();
-
-        // Convert parsed options back to command line format for ASP.NET Core configuration
-        foreach (var option in cmd.Options)
+        // Helper method to add an argument if it has a value
+        void AddIfHasValue<T>(Option<T> option, string configKey, T? value)
         {
-            var value = parseResult.GetValue(option);
-            if (value == null) continue;
-
-            string? configKey = null;
-            switch (option.Name)
-            {
-                case "--port":
-                    configKey = "FtpServer:Port";
-                    break;
-                case "--listen":
-                    configKey = "FtpServer:ListenAddress";
-                    break;
-                case "--max-sessions":
-                    configKey = "FtpServer:MaxSessions";
-                    break;
-                case "--pasv-start":
-                    configKey = "FtpServer:PassivePortRangeStart";
-                    break;
-                case "--pasv-end":
-                    configKey = "FtpServer:PassivePortRangeEnd";
-                    break;
-                case "--auth":
-                    configKey = "FtpServer:Authenticator";
-                    break;
-                case "--storage":
-                    configKey = "FtpServer:StorageProvider";
-                    break;
-                case "--storage-root":
-                    configKey = "FtpServer:StorageRoot";
-                    break;
-                case "--health":
-                    configKey = "FtpServer:HealthEnabled";
-                    break;
-                case "--health-url":
-                    configKey = "FtpServer:HealthUrl";
-                    break;
-                case "--data-open-timeout":
-                    configKey = "FtpServer:DataOpenTimeoutMs";
-                    break;
-                case "--data-transfer-timeout":
-                    configKey = "FtpServer:DataTransferTimeoutMs";
-                    break;
-                case "--control-read-timeout":
-                    configKey = "FtpServer:ControlReadTimeoutMs";
-                    break;
-                case "--rate-limit":
-                    configKey = "FtpServer:DataRateLimitBytesPerSec";
-                    break;
-                case "--ftps-explicit":
-                    configKey = "FtpServer:FtpsExplicitEnabled";
-                    break;
-                case "--ftps-implicit":
-                    configKey = "FtpServer:FtpsImplicitEnabled";
-                    break;
-                case "--ftps-implicit-port":
-                    configKey = "FtpServer:FtpsImplicitPort";
-                    break;
-                case "--tls-cert":
-                    configKey = "FtpServer:TlsCertPath";
-                    break;
-                case "--tls-cert-pass":
-                    configKey = "FtpServer:TlsCertPassword";
-                    break;
-                case "--tls-self-signed":
-                    configKey = "FtpServer:TlsSelfSigned";
-                    break;
-            }
-            
-            if (configKey != null)
+            if (value != null)
             {
                 var stringValue = value is bool boolVal ? boolVal.ToString().ToLowerInvariant() : value.ToString();
                 args.Add($"{configKey}={stringValue}");
+            }
+        }
+
+        // Get all the options from the root command
+        var cmd = parseResult.CommandResult.Command as RootCommand;
+        if (cmd == null) return args.ToArray();
+
+        // Extract values for each option
+        foreach (var option in cmd.Options)
+        {
+            switch (option.Name)
+            {
+                case "--port":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:Port", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--listen":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:ListenAddress", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--max-sessions":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:MaxSessions", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--pasv-start":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:PassivePortRangeStart", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--pasv-end":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:PassivePortRangeEnd", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--auth":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:Authenticator", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--storage":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:StorageProvider", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--storage-root":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:StorageRoot", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--health":
+                    AddIfHasValue((Option<bool?>)option, "FtpServer:HealthEnabled", parseResult.GetValue((Option<bool?>)option));
+                    break;
+                case "--health-url":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:HealthUrl", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--data-open-timeout":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:DataOpenTimeoutMs", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--data-transfer-timeout":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:DataTransferTimeoutMs", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--control-read-timeout":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:ControlReadTimeoutMs", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--rate-limit":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:DataRateLimitBytesPerSec", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--ftps-explicit":
+                    AddIfHasValue((Option<bool?>)option, "FtpServer:FtpsExplicitEnabled", parseResult.GetValue((Option<bool?>)option));
+                    break;
+                case "--ftps-implicit":
+                    AddIfHasValue((Option<bool?>)option, "FtpServer:FtpsImplicitEnabled", parseResult.GetValue((Option<bool?>)option));
+                    break;
+                case "--ftps-implicit-port":
+                    AddIfHasValue((Option<int?>)option, "FtpServer:FtpsImplicitPort", parseResult.GetValue((Option<int?>)option));
+                    break;
+                case "--tls-cert":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:TlsCertPath", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--tls-cert-pass":
+                    AddIfHasValue((Option<string?>)option, "FtpServer:TlsCertPassword", parseResult.GetValue((Option<string?>)option));
+                    break;
+                case "--tls-self-signed":
+                    AddIfHasValue((Option<bool?>)option, "FtpServer:TlsSelfSigned", parseResult.GetValue((Option<bool?>)option));
+                    break;
             }
         }
         

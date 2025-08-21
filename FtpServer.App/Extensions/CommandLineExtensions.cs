@@ -4,7 +4,7 @@ namespace FtpServer.App.Extensions;
 
 public static class CommandLineExtensions
 {
-    public static async Task ApplyCommandLineAsync(this WebApplicationBuilder builder, string[] args)
+    public static void ApplyCommandLine(this WebApplicationBuilder builder, string[] args)
     {
         var cmd = CommandLineConfigurator.CreateRootCommand(builder);
         var parseResult = cmd.Parse(args);

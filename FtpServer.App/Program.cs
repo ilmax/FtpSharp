@@ -16,7 +16,7 @@ builder.Services.AddOptions<FtpServerOptions>()
 builder.Services.AddFtpServerCore();
 builder.Services.AddFtpServerObservability();
 
-await builder.ApplyCommandLineAsync(args);
+builder.ApplyCommandLine(args);
 
 var app = builder.Build();
 
