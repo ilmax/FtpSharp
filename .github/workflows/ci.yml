@@ -130,7 +130,7 @@ jobs:
           set -e
           READY=0
           for i in {1..60}; do
-            if timeout 2 bash -lc 'exec 3<>/dev/tcp/127.0.0.1/2121; read -t 2 banner <&3; echo "$banner" | grep -q "^220"'; then
+            if timeout 2 bash -lc 'exec 3<>/dev/tcp/127.0.0.1/21; read -t 2 banner <&3; echo "$banner" | grep -q "^220"'; then
               echo "FTP banner received (220)."
               READY=1
               break
