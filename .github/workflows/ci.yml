@@ -136,7 +136,7 @@ jobs:
             exit 1
           fi
           READY=0
-          for i in {1..60}; do
+          for i in {1..90}; do
             # If the container crashed while waiting, surface logs and fail fast
             STATUS=$(docker inspect -f '{{.State.Status}}' ftpserver-test 2>/dev/null || echo unknown)
             if [ "$STATUS" != "running" ]; then
@@ -144,9 +144,9 @@ jobs:
               docker logs ftpserver-test || true
               break
             fi
-            # Check the mapped host port (2121) with curl and look for the 220 banner
-            if curl -v --connect-timeout 2 --max-time 3 "ftp://127.0.0.1:2121/" 2>&1 | grep -qE '^< 220|^220'; then
-              echo "FTP banner received (220)."
+            # Attempt an authenticated FTP LIST on the mapped host port; success means server is ready
+            if curl -sS --connect-timeout 2 --max-time 3 -u test:testpass "ftp://127.0.0.1:2121/" >/dev/null 2>&1; then
+              echo "FTP responded to authenticated request."
               READY=1
               break
             fi
