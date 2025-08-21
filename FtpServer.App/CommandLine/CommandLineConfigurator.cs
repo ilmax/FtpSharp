@@ -5,30 +5,6 @@ namespace FtpServer.App.CommandLine;
 
 public static class CommandLineConfigurator
 {
-    // Store options in a record for easy passing around
-    public record CommandLineOptions(
-        Option<int?> Port,
-        Option<string?> Address,
-        Option<int?> MaxSessions,
-        Option<int?> PassiveStart,
-        Option<int?> PassiveEnd,
-        Option<string?> Auth,
-        Option<string?> Storage,
-        Option<string?> StorageRoot,
-        Option<bool?> HealthEnabled,
-        Option<string?> HealthUrl,
-        Option<int?> DataOpenTimeout,
-        Option<int?> DataTransferTimeout,
-        Option<int?> ControlReadTimeout,
-        Option<int?> DataRateLimit,
-        Option<bool?> FtpsExplicit,
-        Option<bool?> FtpsImplicit,
-        Option<int?> FtpsImplicitPort,
-        Option<string?> TlsCertPath,
-        Option<string?> TlsCertPassword,
-        Option<bool?> TlsSelfSigned
-    );
-
     public static RootCommand CreateRootCommand(WebApplicationBuilder builder)
     {
         var portOption = new Option<int?>(name: "--port") { Description = "Control connection port" };
