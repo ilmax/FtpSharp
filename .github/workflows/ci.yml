@@ -136,7 +136,7 @@ jobs:
             exit 1
           fi
           READY=0
-          for i in {1..90}; do
+          for i in {1..15}; do
             # If the container crashed while waiting, surface logs and fail fast
             STATUS=$(docker inspect -f '{{.State.Status}}' ftpserver-test 2>/dev/null || echo unknown)
             if [ "$STATUS" != "running" ]; then
