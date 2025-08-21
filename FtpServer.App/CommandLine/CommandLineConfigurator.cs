@@ -5,38 +5,43 @@ namespace FtpServer.App.CommandLine;
 
 public static class CommandLineConfigurator
 {
+    // Option definition with metadata for configuration mapping
+    private record OptionDefinition(Option Option, string ConfigKey);
+
+    // Centralized option definitions with their configuration mappings
+    private static readonly OptionDefinition[] OptionDefinitions =
+    [
+        new(new Option<int?>(name: "--port") { Description = "Control connection port" }, "FtpServer:Port"),
+        new(new Option<string?>(name: "--listen") { Description = "IP address to bind" }, "FtpServer:ListenAddress"),
+        new(new Option<int?>(name: "--max-sessions") { Description = "Max concurrent sessions" }, "FtpServer:MaxSessions"),
+        new(new Option<int?>(name: "--pasv-start") { Description = "Passive range start" }, "FtpServer:PassivePortRangeStart"),
+        new(new Option<int?>(name: "--pasv-end") { Description = "Passive range end" }, "FtpServer:PassivePortRangeEnd"),
+        new(new Option<string?>(name: "--auth") { Description = "Authenticator plugin" }, "FtpServer:Authenticator"),
+        new(new Option<string?>(name: "--storage") { Description = "Storage provider plugin" }, "FtpServer:StorageProvider"),
+        new(new Option<string?>(name: "--storage-root") { Description = "Storage root path" }, "FtpServer:StorageRoot"),
+        new(new Option<bool?>(name: "--health") { Description = "Enable health endpoint" }, "FtpServer:HealthEnabled"),
+        new(new Option<string?>(name: "--health-url") { Description = "Health URL prefix" }, "FtpServer:HealthUrl"),
+        new(new Option<int?>(name: "--data-open-timeout") { Description = "Data open timeout (ms)" }, "FtpServer:DataOpenTimeoutMs"),
+        new(new Option<int?>(name: "--data-transfer-timeout") { Description = "Data transfer timeout (ms)" }, "FtpServer:DataTransferTimeoutMs"),
+        new(new Option<int?>(name: "--control-read-timeout") { Description = "Control read timeout (ms)" }, "FtpServer:ControlReadTimeoutMs"),
+        new(new Option<int?>(name: "--rate-limit") { Description = "Per-transfer data rate limit (bytes/sec)" }, "FtpServer:DataRateLimitBytesPerSec"),
+        new(new Option<bool?>(name: "--ftps-explicit") { Description = "Enable explicit FTPS (AUTH TLS)" }, "FtpServer:FtpsExplicitEnabled"),
+        new(new Option<bool?>(name: "--ftps-implicit") { Description = "Enable implicit FTPS" }, "FtpServer:FtpsImplicitEnabled"),
+        new(new Option<int?>(name: "--ftps-implicit-port") { Description = "Port for implicit FTPS" }, "FtpServer:FtpsImplicitPort"),
+        new(new Option<string?>(name: "--tls-cert") { Description = "Path to PFX certificate" }, "FtpServer:TlsCertPath"),
+        new(new Option<string?>(name: "--tls-cert-pass") { Description = "Password for PFX certificate" }, "FtpServer:TlsCertPassword"),
+        new(new Option<bool?>(name: "--tls-self-signed") { Description = "Generate self-signed cert if none provided" }, "FtpServer:TlsSelfSigned")
+    ];
+
     public static RootCommand CreateRootCommand(WebApplicationBuilder builder)
     {
-        var portOption = new Option<int?>(name: "--port") { Description = "Control connection port" };
-        var addressOption = new Option<string?>(name: "--listen") { Description = "IP address to bind" };
-        var maxSessionsOption = new Option<int?>(name: "--max-sessions") { Description = "Max concurrent sessions" };
-        var passiveStartOption = new Option<int?>(name: "--pasv-start") { Description = "Passive range start" };
-        var passiveEndOption = new Option<int?>(name: "--pasv-end") { Description = "Passive range end" };
-        var authOption = new Option<string?>(name: "--auth") { Description = "Authenticator plugin" };
-        var storageOption = new Option<string?>(name: "--storage") { Description = "Storage provider plugin" };
-        var storageRootOption = new Option<string?>(name: "--storage-root") { Description = "Storage root path" };
-        var healthEnabled = new Option<bool?>(name: "--health") { Description = "Enable health endpoint" };
-        var healthUrl = new Option<string?>(name: "--health-url") { Description = "Health URL prefix" };
-        var dataOpenTimeout = new Option<int?>(name: "--data-open-timeout") { Description = "Data open timeout (ms)" };
-        var dataTransferTimeout = new Option<int?>(name: "--data-transfer-timeout") { Description = "Data transfer timeout (ms)" };
-        var controlReadTimeout = new Option<int?>(name: "--control-read-timeout") { Description = "Control read timeout (ms)" };
-        var dataRateLimit = new Option<int?>(name: "--rate-limit") { Description = "Per-transfer data rate limit (bytes/sec)" };
-        var ftpsExplicit = new Option<bool?>(name: "--ftps-explicit") { Description = "Enable explicit FTPS (AUTH TLS)" };
-        var ftpsImplicit = new Option<bool?>(name: "--ftps-implicit") { Description = "Enable implicit FTPS" };
-        var ftpsImplicitPort = new Option<int?>(name: "--ftps-implicit-port") { Description = "Port for implicit FTPS" };
-        var tlsCertPath = new Option<string?>(name: "--tls-cert") { Description = "Path to PFX certificate" };
-        var tlsCertPassword = new Option<string?>(name: "--tls-cert-pass") { Description = "Password for PFX certificate" };
-        var tlsSelfSigned = new Option<bool?>(name: "--tls-self-signed") { Description = "Generate self-signed cert if none provided" };
-
-        var cmd = new RootCommand("FTP Server host with ASP.NET Core health")
+        var cmd = new RootCommand("FTP Server host with ASP.NET Core health");
+        
+        // Add all options from the centralized definitions
+        foreach (var optionDef in OptionDefinitions)
         {
-            portOption, addressOption, maxSessionsOption, passiveStartOption, passiveEndOption,
-            authOption, storageOption, storageRootOption,
-            healthEnabled, healthUrl,
-            dataOpenTimeout, dataTransferTimeout, controlReadTimeout, dataRateLimit,
-            ftpsExplicit, ftpsImplicit, ftpsImplicitPort,
-            tlsCertPath, tlsCertPassword, tlsSelfSigned
-        };
+            cmd.AddOption(optionDef.Option);
+        }
 
         return cmd;
     }
@@ -46,7 +51,7 @@ public static class CommandLineConfigurator
         var args = new List<string>();
         
         // Helper method to add an argument if it has a value
-        void AddIfHasValue<T>(Option<T> option, string configKey, T? value)
+        void AddIfHasValue(object? value, string configKey)
         {
             if (value != null)
             {
@@ -55,76 +60,11 @@ public static class CommandLineConfigurator
             }
         }
 
-        // Get all the options from the root command
-        var cmd = parseResult.CommandResult.Command as RootCommand;
-        if (cmd == null) return args.ToArray();
-
-        // Extract values for each option
-        foreach (var option in cmd.Options)
+        // Extract values for each option using the centralized definitions
+        foreach (var optionDef in OptionDefinitions)
         {
-            switch (option.Name)
-            {
-                case "--port":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:Port", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--listen":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:ListenAddress", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--max-sessions":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:MaxSessions", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--pasv-start":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:PassivePortRangeStart", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--pasv-end":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:PassivePortRangeEnd", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--auth":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:Authenticator", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--storage":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:StorageProvider", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--storage-root":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:StorageRoot", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--health":
-                    AddIfHasValue((Option<bool?>)option, "FtpServer:HealthEnabled", parseResult.GetValue((Option<bool?>)option));
-                    break;
-                case "--health-url":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:HealthUrl", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--data-open-timeout":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:DataOpenTimeoutMs", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--data-transfer-timeout":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:DataTransferTimeoutMs", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--control-read-timeout":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:ControlReadTimeoutMs", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--rate-limit":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:DataRateLimitBytesPerSec", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--ftps-explicit":
-                    AddIfHasValue((Option<bool?>)option, "FtpServer:FtpsExplicitEnabled", parseResult.GetValue((Option<bool?>)option));
-                    break;
-                case "--ftps-implicit":
-                    AddIfHasValue((Option<bool?>)option, "FtpServer:FtpsImplicitEnabled", parseResult.GetValue((Option<bool?>)option));
-                    break;
-                case "--ftps-implicit-port":
-                    AddIfHasValue((Option<int?>)option, "FtpServer:FtpsImplicitPort", parseResult.GetValue((Option<int?>)option));
-                    break;
-                case "--tls-cert":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:TlsCertPath", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--tls-cert-pass":
-                    AddIfHasValue((Option<string?>)option, "FtpServer:TlsCertPassword", parseResult.GetValue((Option<string?>)option));
-                    break;
-                case "--tls-self-signed":
-                    AddIfHasValue((Option<bool?>)option, "FtpServer:TlsSelfSigned", parseResult.GetValue((Option<bool?>)option));
-                    break;
-            }
+            var value = parseResult.GetValue(optionDef.Option);
+            AddIfHasValue(value, optionDef.ConfigKey);
         }
         
         return args.ToArray();
