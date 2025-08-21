@@ -128,9 +128,23 @@ jobs:
       - name: Wait for FTP to be ready
         run: |
           set -e
+          # Ensure the container is running before probing the port
+          if ! docker inspect -f '{{.State.Running}}' ftpserver-test 2>/dev/null | grep -q true; then
+            echo "Container ftpserver-test is not running." >&2
+            docker ps -a || true
+            docker logs ftpserver-test || true
+            exit 1
+          fi
           READY=0
           for i in {1..60}; do
-            # Check the mapped host port (2121) with curl verbose output and look for the 220 banner
+            # If the container crashed while waiting, surface logs and fail fast
+            STATUS=$(docker inspect -f '{{.State.Status}}' ftpserver-test 2>/dev/null || echo unknown)
+            if [ "$STATUS" != "running" ]; then
+              echo "Container status is $STATUS while waiting for readiness." >&2
+              docker logs ftpserver-test || true
+              break
+            fi
+            # Check the mapped host port (2121) with curl and look for the 220 banner
             if curl -v --connect-timeout 2 --max-time 3 "ftp://127.0.0.1:2121/" 2>&1 | grep -qE '^< 220|^220'; then
               echo "FTP banner received (220)."
               READY=1
