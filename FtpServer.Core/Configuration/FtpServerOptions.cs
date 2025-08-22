@@ -18,7 +18,7 @@ public sealed class FtpServerOptions
 
     /// <summary>Max concurrent active sessions (default: 100).</summary>
     [Range(1, 10_000)]
-    public int MaxSessions { get; } = 100;
+    public int MaxSessions { get; init; } = 100;
 
     /// <summary>Passive mode data port range start (default: 50000).</summary>
     [Range(1, 65535)]
@@ -48,17 +48,17 @@ public sealed class FtpServerOptions
 
     /// <summary>Timeout in milliseconds for opening a data connection (PASV accept or active connect). Default: 5000.</summary>
     [Range(100, 600_000)]
-    public int DataOpenTimeoutMs { get; } = 5_000;
+    public int DataOpenTimeoutMs { get; init; } = 5_000;
 
     /// <summary>Timeout in milliseconds for a data transfer operation (read/write). Default: 30000.</summary>
     [Range(100, 3_600_000)]
-    public int DataTransferTimeoutMs { get; } = 30_000;
+    public int DataTransferTimeoutMs { get; init; } = 30_000;
 
     /// <summary>Timeout in milliseconds for reading control commands (idle). 0 disables timeout. Default: 0.</summary>
     [Range(0, 3_600_000)]
     public int ControlReadTimeoutMs { get; init; } = 0;
     /// <summary>Optional per-transfer data rate limit in bytes per second. 0 disables throttling.</summary>
-    public int DataRateLimitBytesPerSec { get; set; } = 0;
+    public int DataRateLimitBytesPerSec { get; init; } = 0;
 
     // Health endpoint configuration (optional)
     /// <summary>Enable the lightweight HTTP health endpoint.</summary>
