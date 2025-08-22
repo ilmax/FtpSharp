@@ -62,7 +62,7 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var parseResult = rootCommand.Parse([]);
+        var parseResult = rootCommand.Parse(Array.Empty<string>());
 
         // Act
         var configArgs = CommandLineConfigurator.ExtractCommandLineArguments(parseResult);

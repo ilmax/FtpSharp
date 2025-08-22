@@ -40,7 +40,7 @@ public static class CommandLineConfigurator
         // Add all options from the centralized definitions
         foreach (var optionDef in OptionDefinitions)
         {
-            cmd.AddOption(optionDef.Option);
+            cmd.Add(optionDef.Option);
         }
 
         return cmd;
@@ -60,10 +60,25 @@ public static class CommandLineConfigurator
             }
         }
 
-        // Extract values for each option using the centralized definitions
+        // Extract values for each option by casting to known types
         foreach (var optionDef in OptionDefinitions)
         {
-            var value = parseResult.GetValue(optionDef.Option);
+            object? value = null;
+            
+            // Cast the option to its specific type and call GetValue
+            switch (optionDef.Option)
+            {
+                case Option<int?> intOption:
+                    value = parseResult.GetValue(intOption);
+                    break;
+                case Option<string?> stringOption:
+                    value = parseResult.GetValue(stringOption);
+                    break;
+                case Option<bool?> boolOption:
+                    value = parseResult.GetValue(boolOption);
+                    break;
+            }
+            
             AddIfHasValue(value, optionDef.ConfigKey);
         }
         
