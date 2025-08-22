@@ -65,18 +65,26 @@ public static class CommandLineConfigurator
         {
             object? value = null;
             
-            // Cast the option to its specific type and call GetValue
-            switch (optionDef.Option)
+            try
             {
-                case Option<int?> intOption:
-                    value = parseResult.GetValue(intOption);
-                    break;
-                case Option<string?> stringOption:
-                    value = parseResult.GetValue(stringOption);
-                    break;
-                case Option<bool?> boolOption:
-                    value = parseResult.GetValue(boolOption);
-                    break;
+                // Cast the option to its specific type and call GetValue
+                switch (optionDef.Option)
+                {
+                    case Option<int?> intOption:
+                        value = parseResult.GetValue(intOption);
+                        break;
+                    case Option<string?> stringOption:
+                        value = parseResult.GetValue(stringOption);
+                        break;
+                    case Option<bool?> boolOption:
+                        value = parseResult.GetValue(boolOption);
+                        break;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // If value conversion fails, skip this option
+                continue;
             }
             
             AddIfHasValue(value, optionDef.ConfigKey);

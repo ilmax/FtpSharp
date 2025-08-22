@@ -48,20 +48,16 @@ public class CommandLineExtensionsTests
     }
 
     [Fact]
-    public void ApplyCommandLine_WithInvalidOption_ShouldExitProgram()
+    public void ApplyCommandLine_WithInvalidOption_ShouldThrowArgumentException()
     {
-        // Note: This test would normally cause Environment.Exit(1) but we can't easily test that
-        // in a unit test environment. The error handling is covered by integration testing.
-        // We'll test that valid error-free parsing works correctly instead.
-        
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var args = new[] { "--unknown-option", "value" };
 
-        // Act & Assert - This should not throw but would exit in real scenario
-        // We'll verify this by checking that the method handles unknown options gracefully
-        var exception = Record.Exception(() => builder.ApplyCommandLine(args));
-        Assert.Null(exception);
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() => builder.ApplyCommandLine(args));
+        Assert.Contains("Command line parsing failed", exception.Message);
+        Assert.Contains("Unrecognized", exception.Message);
     }
 
     [Fact]

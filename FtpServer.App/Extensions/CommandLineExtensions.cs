@@ -6,17 +6,17 @@ public static class CommandLineExtensions
 {
     public static void ApplyCommandLine(this WebApplicationBuilder builder, string[] args)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(args);
+        
         var cmd = CommandLineConfigurator.CreateRootCommand(builder);
         var parseResult = cmd.Parse(args);
         
         // Handle parse errors
         if (parseResult.Errors.Count > 0)
         {
-            foreach (var error in parseResult.Errors)
-            {
-                Console.Error.WriteLine($"Command line error: {error}");
-            }
-            Environment.Exit(1);
+            var errorMessages = parseResult.Errors.Select(e => e.Message);
+            throw new ArgumentException($"Command line parsing failed: {string.Join("; ", errorMessages)}");
         }
         
         // Extract command line arguments and add them as configuration

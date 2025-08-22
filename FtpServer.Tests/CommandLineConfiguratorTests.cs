@@ -224,7 +224,7 @@ public class CommandLineConfiguratorTests
 
         // Assert
         Assert.Equal("FTP Server host with ASP.NET Core health", rootCommand.Description);
-        Assert.Equal(20, rootCommand.Options.Count); // Verify all 20 options are added
+        Assert.Equal(22, rootCommand.Options.Count); // Verify all options are added (20 custom + 2 built-in)
     }
 
     [Fact]

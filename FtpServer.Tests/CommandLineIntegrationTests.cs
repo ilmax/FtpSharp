@@ -133,7 +133,7 @@ public class CommandLineIntegrationTests
 
         // Assert - Verify defaults are used when not overridden
         Assert.Equal(21, options.Port); // Default port
-        Assert.Equal("127.0.0.1", options.ListenAddress); // Default listen address
+        Assert.Equal("0.0.0.0", options.ListenAddress); // Default listen address
         Assert.True(options.HealthEnabled); // Explicitly set via command line
         Assert.False(options.FtpsExplicitEnabled); // Default
         Assert.False(options.FtpsImplicitEnabled); // Default
