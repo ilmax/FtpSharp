@@ -3,7 +3,6 @@ using FtpServer.Core.FileSystem;
 using FtpServer.Core.InMemory;
 using FtpServer.Core.Server;
 using FtpServer.Storage.AzureBlob;
-using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 
