@@ -144,9 +144,9 @@ jobs:
               docker logs ftpserver-test || true
               break
             fi
-            # Attempt an authenticated FTP LIST on the mapped host port; success means server is ready
-            if curl -sS --connect-timeout 2 --max-time 3 -u test:testpass "ftp://127.0.0.1:2121/" >/dev/null 2>&1; then
-              echo "FTP responded to authenticated request."
+            # Read the first line (banner) from the mapped host port using netcat; avoid login/data transfers
+            if (nc -w 2 127.0.0.1 2121 < /dev/null | head -n1 | grep -q '^220'); then
+              echo "FTP banner received (220)."
               READY=1
               break
             fi
