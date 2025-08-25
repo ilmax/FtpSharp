@@ -23,7 +23,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert - Just verify that services are registered, not instantiate them
         var serviceDescriptors = services.ToList();
-        
+
         Assert.Contains(serviceDescriptors, s => s.ServiceType == typeof(InMemoryAuthenticator));
         Assert.Contains(serviceDescriptors, s => s.ServiceType == typeof(Core.Basic.BasicAuthenticator));
         Assert.Contains(serviceDescriptors, s => s.ServiceType == typeof(InMemoryStorageProvider));
@@ -46,8 +46,8 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var serviceDescriptors = services.ToList();
-        
-        var ftpServerServices = serviceDescriptors.Where(s => 
+
+        var ftpServerServices = serviceDescriptors.Where(s =>
             s.ServiceType == typeof(InMemoryAuthenticator) ||
             s.ServiceType == typeof(Core.Basic.BasicAuthenticator) ||
             s.ServiceType == typeof(InMemoryStorageProvider) ||
@@ -59,7 +59,7 @@ public class ServiceCollectionExtensionsTests
             s.ServiceType == typeof(TlsCertificateProvider)
         );
 
-        Assert.All(ftpServerServices, descriptor => 
+        Assert.All(ftpServerServices, descriptor =>
             Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime));
     }
 
@@ -75,7 +75,7 @@ public class ServiceCollectionExtensionsTests
         // Assert - The method should complete without throwing and add some services
         var serviceDescriptors = services.ToList();
         Assert.NotEmpty(serviceDescriptors);
-        
+
         // OpenTelemetry services are registered internally
         // We just verify that the method runs successfully and adds services
     }

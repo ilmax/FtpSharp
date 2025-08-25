@@ -47,7 +47,9 @@ public class ConcurrencyDataTests
         for (int i = 0; i < clientTasks.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+            var passivePool = new Core.Server.PassivePortPool(options);
+            var certProvider = new Core.Server.TlsCertificateProvider();
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -106,7 +108,9 @@ public class ConcurrencyDataTests
         for (int i = 0; i < 2; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+            var passivePool = new Core.Server.PassivePortPool(options);
+            var certProvider = new Core.Server.TlsCertificateProvider();
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -154,7 +158,9 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
     }
@@ -184,7 +190,9 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
@@ -218,7 +226,9 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 
@@ -272,7 +282,9 @@ public class ConcurrencyDataTests
         for (int i = 0; i < clientTasks.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+            var passivePool = new Core.Server.PassivePortPool(options);
+            var certProvider = new Core.Server.TlsCertificateProvider();
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -344,7 +356,9 @@ public class ConcurrencyDataTests
         for (int i = 0; i < 8; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+            var passivePool = new Core.Server.PassivePortPool(options);
+            var certProvider = new Core.Server.TlsCertificateProvider();
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -401,7 +415,9 @@ public class ConcurrencyDataTests
         for (int i = 0; i < clients.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+            var passivePool = new Core.Server.PassivePortPool(options);
+            var certProvider = new Core.Server.TlsCertificateProvider();
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             serverTasks.Add(session.RunAsync(cts.Token));
         }
@@ -445,7 +461,9 @@ public class ConcurrencyDataTests
         });
 
         var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 

@@ -23,6 +23,7 @@ public sealed class FtpSession : IFtpSessionContext
     private readonly IStorageProvider _storage;
     private readonly IOptions<FtpServerOptions> _options;
     private readonly PassivePortPool _passivePool;
+    private readonly TlsCertificateProvider _certificateProvider;
 
     private bool _isAuthenticated;
     private string? _pendingUser;
@@ -43,13 +44,14 @@ public sealed class FtpSession : IFtpSessionContext
     private char _prot = 'C';
     public char DataProtectionLevel { get => _prot; set => _prot = value; }
 
-    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool)
+    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool, TlsCertificateProvider certificateProvider)
     {
         _client = client;
         _auth = auth;
         _storage = storage;
         _options = options;
         _passivePool = passivePool;
+        _certificateProvider = certificateProvider;
         _handlers = new Dictionary<string, IFtpCommandHandler>(StringComparer.OrdinalIgnoreCase)
         {
             ["NOOP"] = new NoopHandler(),
@@ -89,10 +91,6 @@ public sealed class FtpSession : IFtpSessionContext
         };
     }
 
-    // Back-compat for tests and callers not wiring PassivePortPool
-    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options)
-        : this(client, auth, storage, options, passivePool: null!) { }
-
     private readonly Dictionary<string, IFtpCommandHandler> _handlers;
 
     public string Cwd { get => _cwd; set => _cwd = value; }
@@ -104,8 +102,8 @@ public sealed class FtpSession : IFtpSessionContext
 
 
     // Overload to supply an already-wrapped control stream (e.g., implicit FTPS)
-    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool, Stream initialControlStream, bool isTls)
-        : this(client, auth, storage, options, passivePool)
+    public FtpSession(TcpClient client, IAuthenticator auth, IStorageProvider storage, IOptions<FtpServerOptions> options, PassivePortPool passivePool, Stream initialControlStream, bool isTls, TlsCertificateProvider certificateProvider)
+        : this(client, auth, storage, options, passivePool, certificateProvider)
     {
         _initialControlStream = initialControlStream;
         _controlTls = isTls;
@@ -190,11 +188,10 @@ public sealed class FtpSession : IFtpSessionContext
 
     public async Task<Stream> UpgradeControlToTlsAsync(CancellationToken ct)
     {
-        var certProvider = new TlsCertificateProvider();
-        var cert = certProvider.GetOrCreate(_options);
+        var cert = _certificateProvider.GetOrCreate(_options);
         var ssl = new System.Net.Security.SslStream(_client.GetStream(), leaveInnerStreamOpen: false);
         await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13, checkCertificateRevocation: false);
-        return ssl;
+        return new TlsDataStream(ssl);
     }
 
     public PassiveEndpoint EnterPassiveMode()
@@ -241,7 +238,11 @@ public sealed class FtpSession : IFtpSessionContext
     public async Task<Stream> OpenDataStreamAsync(CancellationToken ct)
     {
         using var openTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+#if DEBUG
+        openTimeoutCts.CancelAfter(_options.Value.DataOpenTimeoutMs * 1000);
+#else
         openTimeoutCts.CancelAfter(_options.Value.DataOpenTimeoutMs);
+#endif
         var tok = openTimeoutCts.Token;
         if (_pasvListener is not null)
         {
@@ -260,10 +261,10 @@ public sealed class FtpSession : IFtpSessionContext
             Stream ds = client.GetStream();
             if (_prot == 'P')
             {
-                var cert = new TlsCertificateProvider().GetOrCreate(_options);
+                var cert = _certificateProvider.GetOrCreate(_options);
                 var ssl = new System.Net.Security.SslStream(ds, leaveInnerStreamOpen: false);
                 await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13, checkCertificateRevocation: false);
-                ds = ssl;
+                ds = new TlsDataStream(ssl);
             }
             return new SessionTaggedStream(ds, () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }
@@ -276,10 +277,10 @@ public sealed class FtpSession : IFtpSessionContext
             Stream ds = client.GetStream();
             if (_prot == 'P')
             {
-                var cert = new TlsCertificateProvider().GetOrCreate(_options);
+                var cert = _certificateProvider.GetOrCreate(_options);
                 var ssl = new System.Net.Security.SslStream(ds, leaveInnerStreamOpen: false);
                 await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13, checkCertificateRevocation: false);
-                ds = ssl;
+                ds = new TlsDataStream(ssl);
             }
             return new SessionTaggedStream(ds, () => Metrics.SessionActiveTransfers.Add(-1, new KeyValuePair<string, object?>("session_id", _sessionId)));
         }

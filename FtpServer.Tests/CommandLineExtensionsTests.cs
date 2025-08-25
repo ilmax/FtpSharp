@@ -65,7 +65,7 @@ public class CommandLineExtensionsTests
     {
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // Add some base configuration first
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -91,7 +91,7 @@ public class CommandLineExtensionsTests
     {
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
-        var args = new[] 
+        var args = new[]
         {
             "--port", "8021",                    // int
             "--storage-root", "/data/ftp",       // string
@@ -119,17 +119,17 @@ public class CommandLineExtensionsTests
     {
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // 1. Add base configuration (lowest priority)
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FtpServer:Port"] = "21"
         });
-        
+
         // 2. Add environment variables (medium priority)
         Environment.SetEnvironmentVariable("FTP_FtpServer__Port", "8021");
         builder.Configuration.AddEnvironmentVariables("FTP_");
-        
+
         // 3. Apply command line (highest priority)
         var args = new[] { "--port", "2121" };
 
@@ -139,7 +139,7 @@ public class CommandLineExtensionsTests
         // Assert - Command line should have highest priority
         var config = builder.Configuration;
         Assert.Equal("2121", config["FtpServer:Port"]);
-        
+
         // Cleanup
         Environment.SetEnvironmentVariable("FTP_FtpServer__Port", null);
     }

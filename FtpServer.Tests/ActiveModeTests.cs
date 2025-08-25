@@ -42,7 +42,9 @@ public class ActiveModeTests
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
     }
@@ -77,7 +79,9 @@ public class ActiveModeTests
         });
 
         using var serverClient = await listener.AcceptTcpClientAsync();
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await Task.WhenAll(clientTask, session.RunAsync(cts.Token)); listener.Stop();
 

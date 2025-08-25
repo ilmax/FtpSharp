@@ -41,10 +41,10 @@ public class CommandLineIntegrationTests
         };
 
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // Act
         builder.ApplyCommandLine(args);
-        
+
         // Configure FtpServerOptions binding as in Program.cs
         builder.Services.AddOptions<FtpServerOptions>()
             .Bind(builder.Configuration.GetSection("FtpServer"))
@@ -82,8 +82,8 @@ public class CommandLineIntegrationTests
         // Arrange - Set environment variables first
         Environment.SetEnvironmentVariable("FTP_FtpServer__Port", "8021");
         Environment.SetEnvironmentVariable("FTP_FtpServer__ListenAddress", "10.0.0.1");
-        
-        var args = new[] 
+
+        var args = new[]
         {
             "--port", "2121",  // Should override environment variable
             // No --listen argument, so environment variable should be used
@@ -91,11 +91,11 @@ public class CommandLineIntegrationTests
         };
 
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // Act
         builder.Configuration.AddEnvironmentVariables("FTP_");
         builder.ApplyCommandLine(args);
-        
+
         builder.Services.AddOptions<FtpServerOptions>()
             .Bind(builder.Configuration.GetSection("FtpServer"))
             .ValidateDataAnnotations();
@@ -107,7 +107,7 @@ public class CommandLineIntegrationTests
         Assert.Equal(2121, options.Port); // Command line overrides environment
         Assert.Equal("10.0.0.1", options.ListenAddress); // Environment variable used
         Assert.True(options.HealthEnabled); // Command line
-        
+
         // Cleanup
         Environment.SetEnvironmentVariable("FTP_FtpServer__Port", null);
         Environment.SetEnvironmentVariable("FTP_FtpServer__ListenAddress", null);
@@ -120,10 +120,10 @@ public class CommandLineIntegrationTests
         var args = new[] { "--health" }; // Only specify one option
 
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // Act
         builder.ApplyCommandLine(args);
-        
+
         builder.Services.AddOptions<FtpServerOptions>()
             .Bind(builder.Configuration.GetSection("FtpServer"))
             .ValidateDataAnnotations();
@@ -143,14 +143,14 @@ public class CommandLineIntegrationTests
     public void CommandLineIntegration_WithMixedConfiguration_ShouldMergeCorrectly()
     {
         // Arrange
-        var args = new[] 
+        var args = new[]
         {
             "--port", "2121",
             "--health"
         };
 
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // Add base configuration
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -158,10 +158,10 @@ public class CommandLineIntegrationTests
             ["FtpServer:MaxSessions"] = "100",
             ["FtpServer:StorageProvider"] = "InMemory"
         });
-        
+
         // Act
         builder.ApplyCommandLine(args);
-        
+
         builder.Services.AddOptions<FtpServerOptions>()
             .Bind(builder.Configuration.GetSection("FtpServer"))
             .ValidateDataAnnotations();
@@ -190,10 +190,10 @@ public class CommandLineIntegrationTests
         };
 
         var builder = WebApplication.CreateBuilder([]);
-        
+
         // Act
         builder.ApplyCommandLine(args);
-        
+
         builder.Services.AddOptions<FtpServerOptions>()
             .Bind(builder.Configuration.GetSection("FtpServer"))
             .ValidateDataAnnotations();
@@ -201,7 +201,7 @@ public class CommandLineIntegrationTests
         // Assert - Should not throw during validation
         var app = builder.Build();
         var options = app.Services.GetRequiredService<IOptions<FtpServerOptions>>().Value;
-        
+
         Assert.Equal(2121, options.Port);
         Assert.Equal(50, options.MaxSessions);
         Assert.Equal(5000, options.PassivePortRangeStart);

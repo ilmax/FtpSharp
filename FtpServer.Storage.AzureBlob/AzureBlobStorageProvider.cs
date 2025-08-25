@@ -92,7 +92,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider
         // Azure Blob has virtual directories; create a zero-length blob with a trailing slash marker (optional).
         string key = ToKey(path).TrimEnd('/') + "/";
         var blob = _container.GetBlobClient(key);
-        await blob.UploadAsync(BinaryData.FromBytes(Array.Empty<byte>()), overwrite: true, ct);
+        await blob.UploadAsync(BinaryData.FromBytes([]), overwrite: true, ct);
     }
 
     public async Task DeleteAsync(string path, bool recursive, CancellationToken ct)
