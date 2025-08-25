@@ -75,7 +75,7 @@ public sealed class FtpServerHost : IAsyncDisposable
                     continue;
                 }
                 var opts = _options.Value;
-                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options, _passivePool);
+                var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options, _passivePool, _certProvider);
                 Metrics.SessionsActive.Add(1);
                 var task = session.RunAsync(ct);
                 _sessions.TryAdd(task, 0);
@@ -116,7 +116,7 @@ public sealed class FtpServerHost : IAsyncDisposable
                         var ssl = new SslStream(client.GetStream(), leaveInnerStreamOpen: false);
                         await ssl.AuthenticateAsServerAsync(cert, clientCertificateRequired: false, SslProtocols.Tls12 | SslProtocols.Tls13, checkCertificateRevocation: false);
                         var opts = _options.Value;
-                        var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options, _passivePool, ssl, isTls: true);
+                        var session = new FtpSession(client, _authFactory.Create(opts.Authenticator), _storageFactory.Create(opts.StorageProvider), _options, _passivePool, ssl, isTls: true, _certProvider);
                         await session.RunAsync(ct);
                     }
                     catch (Exception ex)
