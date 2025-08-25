@@ -138,6 +138,7 @@ public sealed class FtpServerHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _logger.LogInformation("Shutting down FTP server...");
         _listener?.Stop();
         _implicitListener?.Stop();
         try { await Task.WhenAll(_sessions.Keys); } catch { }

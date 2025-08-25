@@ -1,6 +1,4 @@
-﻿using System.CommandLine;
-using FtpServer.App.CommandLine;
-using FtpServer.App.Extensions;
+﻿using FtpServer.App.Extensions;
 using FtpServer.Core.Configuration;
 using FtpServer.Core.Server;
 

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
 
 namespace FtpServer.App.CommandLine;
 
@@ -9,7 +8,7 @@ public static class CommandLineConfigurator
     private record OptionDefinition(Option Option, string ConfigKey);
 
     // Centralized option definitions with their configuration mappings
-    private static readonly OptionDefinition[] OptionDefinitions =
+    private static readonly OptionDefinition[] s_optionDefinitions =
     [
         new(new Option<int?>(name: "--port") { Description = "Control connection port" }, "FtpServer:Port"),
         new(new Option<string?>(name: "--listen") { Description = "IP address to bind" }, "FtpServer:ListenAddress"),
@@ -36,9 +35,9 @@ public static class CommandLineConfigurator
     public static RootCommand CreateRootCommand(WebApplicationBuilder builder)
     {
         var cmd = new RootCommand("FTP Server host with ASP.NET Core health");
-        
+
         // Add all options from the centralized definitions
-        foreach (var optionDef in OptionDefinitions)
+        foreach (var optionDef in s_optionDefinitions)
         {
             cmd.Add(optionDef.Option);
         }
@@ -46,10 +45,10 @@ public static class CommandLineConfigurator
         return cmd;
     }
 
-    public static string[] ExtractCommandLineArguments(System.CommandLine.ParseResult parseResult)
+    public static string[] ExtractCommandLineArguments(ParseResult parseResult)
     {
         var args = new List<string>();
-        
+
         // Helper method to add an argument if it has a value
         void AddIfHasValue(object? value, string configKey)
         {
@@ -61,10 +60,10 @@ public static class CommandLineConfigurator
         }
 
         // Extract values for each option by casting to known types
-        foreach (var optionDef in OptionDefinitions)
+        foreach (var optionDef in s_optionDefinitions)
         {
             object? value = null;
-            
+
             try
             {
                 // Cast the option to its specific type and call GetValue
@@ -86,10 +85,10 @@ public static class CommandLineConfigurator
                 // If value conversion fails, skip this option
                 continue;
             }
-            
+
             AddIfHasValue(value, optionDef.ConfigKey);
         }
-        
+
         return args.ToArray();
     }
 }

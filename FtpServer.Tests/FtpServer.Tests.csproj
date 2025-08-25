@@ -13,7 +13,11 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Xunit.SkippableFact" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Azure.Storage.Blobs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FtpServer.Core\FtpServer.Core.csproj" />
     <ProjectReference Include="..\FtpServer.App\FtpServer.App.csproj" />
+    <ProjectReference Include="..\FtpServer.Storage.AzureBlob\FtpServer.Storage.AzureBlob.csproj" />
   </ItemGroup>
 
 </Project>

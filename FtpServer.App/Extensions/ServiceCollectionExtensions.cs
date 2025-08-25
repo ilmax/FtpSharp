@@ -2,7 +2,7 @@ using FtpServer.Core.Abstractions;
 using FtpServer.Core.FileSystem;
 using FtpServer.Core.InMemory;
 using FtpServer.Core.Server;
-using Microsoft.Extensions.DependencyInjection;
+using FtpServer.Storage.AzureBlob;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 
@@ -16,8 +16,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Core.Basic.BasicAuthenticator>();
         services.AddSingleton<InMemoryStorageProvider>();
         services.AddSingleton<FileSystemStorageProvider>();
+        services.AddOptions<AzureBlobStorageOptions>()
+            .BindConfiguration("AzureBlob")
+            .ValidateDataAnnotations();
+        services.AddSingleton<AzureBlobStorageProvider>();
         services.AddSingleton<IAuthenticatorFactory, Core.Plugins.PluginRegistry>();
-        services.AddSingleton<IStorageProviderFactory, Core.Plugins.PluginRegistry>();
+        services.AddSingleton<Core.Plugins.PluginRegistry>();
+        services.AddSingleton<IStorageProviderFactory, AppStorageProviderFactory>();
         services.AddSingleton<FtpServerHost>();
         services.AddSingleton<PassivePortPool>();
         services.AddSingleton<TlsCertificateProvider>();

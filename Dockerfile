@@ -1,5 +1,5 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 as build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY FtpServer.sln ./
 # Include central package and build props for proper restore
@@ -8,12 +8,13 @@ COPY Directory.Build.props ./
 COPY FtpServer.Core/FtpServer.Core.csproj FtpServer.Core/
 COPY FtpServer.App/FtpServer.App.csproj FtpServer.App/
 COPY FtpServer.Tests/FtpServer.Tests.csproj FtpServer.Tests/
+COPY FtpServer.Storage.AzureBlob/FtpServer.Storage.AzureBlob.csproj FtpServer.Storage.AzureBlob/
 RUN dotnet restore FtpServer.sln
 COPY . .
 RUN dotnet publish FtpServer.App/FtpServer.App.csproj -c Release -o /app/publish --no-restore
 
 # Runtime image (ASP.NET Core runtime required for web hosting)
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 as final
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 # Default environment configuration:
