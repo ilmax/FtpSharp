@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations();
         services.AddSingleton<AzureBlobStorageProvider>();
         services.AddSingleton<IAuthenticatorFactory, Core.Plugins.PluginRegistry>();
-        services.AddSingleton<IStorageProviderFactory, Core.Plugins.PluginRegistry>();
+        services.AddSingleton<Core.Plugins.PluginRegistry>();
         services.AddSingleton<IStorageProviderFactory, AppStorageProviderFactory>();
         services.AddSingleton<FtpServerHost>();
         services.AddSingleton<PassivePortPool>();
