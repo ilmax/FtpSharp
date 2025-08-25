@@ -39,7 +39,9 @@ public class ConcurrencyTests
         for (int i = 0; i < clients.Length; i++)
         {
             var serverClient = await listener.AcceptTcpClientAsync();
-            var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+            var passivePool = new Core.Server.PassivePortPool(options);
+            var certProvider = new Core.Server.TlsCertificateProvider();
+            var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             serverTasks.Add(session.RunAsync(cts.Token));
         }

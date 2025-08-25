@@ -40,7 +40,9 @@ public class FtpSessionTests
         auth.SetUser("u", "p");
         var storage = new InMemoryStorageProvider();
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -70,7 +72,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -100,7 +104,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -129,7 +135,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -159,7 +167,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -189,7 +199,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -218,7 +230,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -248,7 +262,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -274,7 +290,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -313,7 +331,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -344,7 +364,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -379,7 +401,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
 
@@ -411,7 +435,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -445,7 +471,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -474,7 +502,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -500,7 +530,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -529,7 +561,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -556,7 +590,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -585,7 +621,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -613,7 +651,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -642,7 +682,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -671,7 +713,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -698,7 +742,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -752,7 +798,9 @@ public class FtpSessionTests
         var auth = new InMemoryAuthenticator();
         auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -795,7 +843,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -848,7 +898,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
 
@@ -894,7 +946,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -936,7 +990,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -973,7 +1029,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
 
@@ -1033,7 +1091,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -1066,7 +1126,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions { ControlReadTimeoutMs = 300 });
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -1097,7 +1159,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -1137,7 +1201,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
@@ -1169,7 +1235,9 @@ public class FtpSessionTests
         using var serverClient = await listener.AcceptTcpClientAsync();
         var auth = new InMemoryAuthenticator(); auth.SetUser("u", "p");
         var options = Microsoft.Extensions.Options.Options.Create(new Core.Configuration.FtpServerOptions());
-        var session = new Core.Server.FtpSession(serverClient, auth, storage, options);
+        var passivePool = new Core.Server.PassivePortPool(options);
+        var certProvider = new Core.Server.TlsCertificateProvider();
+        var session = new Core.Server.FtpSession(serverClient, auth, storage, options, passivePool, certProvider);
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await Task.WhenAll(session.RunAsync(cts.Token), clientTask);
     }
