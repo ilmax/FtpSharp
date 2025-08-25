@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -238,7 +239,11 @@ public sealed class FtpSession : IFtpSessionContext
     public async Task<Stream> OpenDataStreamAsync(CancellationToken ct)
     {
         using var openTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+#if DEBUG
         openTimeoutCts.CancelAfter(_options.Value.DataOpenTimeoutMs * 1000);
+#else
+        openTimeoutCts.CancelAfter(_options.Value.DataOpenTimeoutMs);
+#endif
         var tok = openTimeoutCts.Token;
         if (_pasvListener is not null)
         {
