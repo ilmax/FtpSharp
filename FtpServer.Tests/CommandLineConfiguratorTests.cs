@@ -1,7 +1,7 @@
+using System.CommandLine;
 using FtpServer.App.CommandLine;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
-using System.CommandLine;
 
 namespace FtpServer.Tests;
 
@@ -19,10 +19,10 @@ public class CommandLineConfiguratorTests
         // Assert
         Assert.NotNull(rootCommand);
         Assert.Equal("FTP Server host with ASP.NET Core health", rootCommand.Description);
-        
+
         // Verify all expected options are present
         var optionNames = rootCommand.Options.Select(o => o.Name).ToList();
-        
+
         var expectedOptions = new[]
         {
             "--port", "--listen", "--max-sessions", "--pasv-start", "--pasv-end",
@@ -94,10 +94,10 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var testArgs = new[] 
+        var testArgs = new[]
         {
             "--port", "2121",
-            "--max-sessions", "100", 
+            "--max-sessions", "100",
             "--pasv-start", "5000",
             "--pasv-end", "5100",
             "--data-open-timeout", "30000",
@@ -129,7 +129,7 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var testArgs = new[] 
+        var testArgs = new[]
         {
             "--listen", "192.168.1.1",
             "--auth", "Basic",
@@ -160,7 +160,7 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var testArgs = new[] 
+        var testArgs = new[]
         {
             "--health",
             "--ftps-explicit",
@@ -208,7 +208,7 @@ public class CommandLineConfiguratorTests
 
         // Act & Assert - This should not throw, but the parse result will contain errors
         var configArgs = CommandLineConfigurator.ExtractCommandLineArguments(parseResult);
-        
+
         // With invalid integer, the GetValue should return null/default and not be included
         Assert.DoesNotContain(configArgs, arg => arg.StartsWith("FtpServer:Port"));
     }
@@ -346,8 +346,8 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var testArgs = new[] 
-        { 
+        var testArgs = new[]
+        {
             "--storage-root", "/path/with spaces/and-dashes",
             "--tls-cert-pass", "p@ssw0rd!#$%",
             "--health-url", "/health?detailed=true&format=json"
@@ -369,8 +369,8 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var testArgs = new[] 
-        { 
+        var testArgs = new[]
+        {
             "--port", "65535",
             "--max-sessions", "10000",
             "--rate-limit", "1073741824" // 1GB
@@ -392,7 +392,7 @@ public class CommandLineConfiguratorTests
         // Arrange
         var builder = WebApplication.CreateBuilder([]);
         var rootCommand = CommandLineConfigurator.CreateRootCommand(builder);
-        var testArgs = new[] 
+        var testArgs = new[]
         {
             "--port", "2121",
             "--listen", "0.0.0.0",

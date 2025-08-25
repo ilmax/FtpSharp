@@ -1,7 +1,7 @@
+using System.Security.Cryptography.X509Certificates;
 using FtpServer.Core.Configuration;
 using FtpServer.Core.Server;
 using Microsoft.Extensions.Options;
-using System.Security.Cryptography.X509Certificates;
 
 namespace FtpServer.Tests;
 
@@ -18,7 +18,7 @@ public class TlsCertificateProviderTests
             using var rsa = System.Security.Cryptography.RSA.Create(2048);
             var req = new CertificateRequest("CN=Test", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
             var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
-            
+
             // Export as PFX to temp file
             File.WriteAllBytes(tempCertPath, cert.Export(X509ContentType.Pfx));
 
@@ -50,14 +50,14 @@ public class TlsCertificateProviderTests
         // Arrange
         var tempCertPath = Path.GetTempFileName();
         var password = "testpass123";
-        
+
         try
         {
             // Create a password-protected certificate
             using var rsa = System.Security.Cryptography.RSA.Create(2048);
             var req = new CertificateRequest("CN=TestWithPassword", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
             var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
-            
+
             // Export as password-protected PFX
             File.WriteAllBytes(tempCertPath, cert.Export(X509ContentType.Pfx, password));
 
@@ -172,7 +172,7 @@ public class TlsCertificateProviderTests
             using var rsa = System.Security.Cryptography.RSA.Create(2048);
             var req = new CertificateRequest("CN=EmptyPassword", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
             var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
-            
+
             File.WriteAllBytes(tempCertPath, cert.Export(X509ContentType.Pfx));
 
             var options = Options.Create(new FtpServerOptions
