@@ -91,8 +91,6 @@ public sealed class FtpSession : IFtpSessionContext
         };
     }
 
-    // Back-compat for tests and callers not wiring PassivePortPool
-
     private readonly Dictionary<string, IFtpCommandHandler> _handlers;
 
     public string Cwd { get => _cwd; set => _cwd = value; }
