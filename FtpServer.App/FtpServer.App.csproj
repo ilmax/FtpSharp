@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" VersionOverride="1.17.0" />
+    <PackageReference Include="Azure.Storage.Blobs" VersionOverride="12.25.1" />
+  <PackageReference Include="Microsoft.Extensions.Configuration" VersionOverride="9.0.9" />
+  <PackageReference Include="Microsoft.Extensions.Configuration.Binder" VersionOverride="9.0.9" />
     <ProjectReference Include="..\FtpServer.Core\FtpServer.Core.csproj" />
     <ProjectReference Include="..\FtpServer.Storage.AzureBlob\FtpServer.Storage.AzureBlob.csproj" />
   </ItemGroup>
