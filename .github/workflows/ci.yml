@@ -26,10 +26,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install GitVersion
-        uses: GitTools/actions/gitversion/setup@v4.1.0
+        uses: GitTools/actions/gitversion/setup@v4.2.0
       - name: Determine Version
         id: gitversion
-        uses: GitTools/actions/gitversion/execute@v4.1.0
+        uses: GitTools/actions/gitversion/execute@v4.2.0
       - name: Echo version
         run: echo "SemVer=${{ steps.gitversion.outputs.semVer }}"
       - name: Setup .NET
